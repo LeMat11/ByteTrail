@@ -1,8 +1,9 @@
 // !$*UTF8*$!
 {
 	archiveVersion = 1;
-	classes = {};
-	objectVersion = 77;
+	classes = {
+	};
+	objectVersion = 71;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -45,24 +46,44 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		A40000000000000000000001 /* ByteTrailApp */ = {isa = PBXFileSystemSynchronizedRootGroup; path = Sources/ByteTrailApp; sourceTree = "<group>"; };
-		A40000000000000000000002 /* ByteTrailCore */ = {isa = PBXFileSystemSynchronizedRootGroup; path = Sources/ByteTrailCore; sourceTree = "<group>"; };
-		A40000000000000000000003 /* ByteTrailCoreTests */ = {isa = PBXFileSystemSynchronizedRootGroup; path = Tests/ByteTrailCoreTests; sourceTree = "<group>"; };
+		A40000000000000000000001 /* Sources/ByteTrailApp */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Sources/ByteTrailApp; sourceTree = "<group>"; };
+		A40000000000000000000002 /* Sources/ByteTrailCore */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Sources/ByteTrailCore; sourceTree = "<group>"; };
+		A40000000000000000000003 /* Tests/ByteTrailCoreTests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Tests/ByteTrailCoreTests; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		A50000000000000000000001 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000001 /* ByteTrailCore.framework in Frameworks */); runOnlyForDeploymentPostprocessing = 0; };
-		A50000000000000000000002 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
-		A50000000000000000000003 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000002 /* ByteTrailCore.framework in Frameworks */); runOnlyForDeploymentPostprocessing = 0; };
+		A50000000000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000000000000000000001 /* ByteTrailCore.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A50000000000000000000002 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A50000000000000000000003 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000000000000000000002 /* ByteTrailCore.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		A60000000000000000000001 = {
 			isa = PBXGroup;
 			children = (
-				A40000000000000000000001 /* ByteTrailApp */,
-				A40000000000000000000002 /* ByteTrailCore */,
-				A40000000000000000000003 /* ByteTrailCoreTests */,
+				A40000000000000000000001 /* Sources/ByteTrailApp */,
+				A40000000000000000000002 /* Sources/ByteTrailCore */,
+				A40000000000000000000003 /* Tests/ByteTrailCoreTests */,
 				A60000000000000000000003 /* Configuration */,
 				A60000000000000000000002 /* Products */,
 			);
@@ -70,13 +91,22 @@
 		};
 		A60000000000000000000002 /* Products */ = {
 			isa = PBXGroup;
-			children = (A20000000000000000000001 /* ByteTrail.app */, A20000000000000000000002 /* ByteTrailCore.framework */, A20000000000000000000003 /* ByteTrailCoreTests.xctest */);
+			children = (
+				A20000000000000000000001 /* ByteTrail.app */,
+				A20000000000000000000002 /* ByteTrailCore.framework */,
+				A20000000000000000000003 /* ByteTrailCoreTests.xctest */,
+			);
 			name = Products;
 			sourceTree = "<group>";
 		};
 		A60000000000000000000003 /* Configuration */ = {
 			isa = PBXGroup;
-			children = (A20000000000000000000004, A20000000000000000000005, A20000000000000000000006, A20000000000000000000007);
+			children = (
+				A20000000000000000000004 /* AppConfiguration.xcconfig */,
+				A20000000000000000000005 /* ByteTrail-Info.plist */,
+				A20000000000000000000006 /* ByteTrail.entitlements */,
+				A20000000000000000000007 /* AppIcon.svg */,
+			);
 			path = Configuration;
 			sourceTree = "<group>";
 		};
@@ -85,38 +115,65 @@
 /* Begin PBXNativeTarget section */
 		A80000000000000000000001 /* ByteTrail */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = AB0000000000000000000002;
-			buildPhases = (AC0000000000000000000001, A50000000000000000000001, AD0000000000000000000001);
-			buildRules = ();
-			dependencies = (AE0000000000000000000001);
-			fileSystemSynchronizedGroups = (A40000000000000000000001);
+			buildConfigurationList = AB0000000000000000000002 /* Build configuration list for PBXNativeTarget "ByteTrail" */;
+			buildPhases = (
+				AC0000000000000000000001 /* Sources */,
+				A50000000000000000000001 /* Frameworks */,
+				AD0000000000000000000001 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				AE0000000000000000000001 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				A40000000000000000000001 /* Sources/ByteTrailApp */,
+			);
 			name = ByteTrail;
 			productName = ByteTrail;
-			productReference = A20000000000000000000001;
+			productReference = A20000000000000000000001 /* ByteTrail.app */;
 			productType = "com.apple.product-type.application";
 		};
 		A80000000000000000000002 /* ByteTrailCore */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = AB0000000000000000000003;
-			buildPhases = (AC0000000000000000000002, A50000000000000000000002, AD0000000000000000000002);
-			buildRules = ();
-			dependencies = ();
-			fileSystemSynchronizedGroups = (A40000000000000000000002);
+			buildConfigurationList = AB0000000000000000000003 /* Build configuration list for PBXNativeTarget "ByteTrailCore" */;
+			buildPhases = (
+				AC0000000000000000000002 /* Sources */,
+				A50000000000000000000002 /* Frameworks */,
+				AD0000000000000000000002 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				A40000000000000000000002 /* Sources/ByteTrailCore */,
+			);
 			name = ByteTrailCore;
 			productName = ByteTrailCore;
-			productReference = A20000000000000000000002;
+			productReference = A20000000000000000000002 /* ByteTrailCore.framework */;
 			productType = "com.apple.product-type.framework";
 		};
 		A80000000000000000000003 /* ByteTrailCoreTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = AB0000000000000000000004;
-			buildPhases = (AC0000000000000000000003, A50000000000000000000003, AD0000000000000000000003);
-			buildRules = ();
-			dependencies = (AE0000000000000000000002, AE0000000000000000000003);
-			fileSystemSynchronizedGroups = (A40000000000000000000003);
+			buildConfigurationList = AB0000000000000000000004 /* Build configuration list for PBXNativeTarget "ByteTrailCoreTests" */;
+			buildPhases = (
+				AC0000000000000000000003 /* Sources */,
+				A50000000000000000000003 /* Frameworks */,
+				AD0000000000000000000003 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				AE0000000000000000000002 /* PBXTargetDependency */,
+				AE0000000000000000000003 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				A40000000000000000000003 /* Tests/ByteTrailCoreTests */,
+			);
 			name = ByteTrailCoreTests;
 			productName = ByteTrailCoreTests;
-			productReference = A20000000000000000000003;
+			productReference = A20000000000000000000003 /* ByteTrailCoreTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
@@ -129,58 +186,252 @@
 				LastSwiftUpdateCheck = 2600;
 				LastUpgradeCheck = 2600;
 				TargetAttributes = {
-					A80000000000000000000001 = {CreatedOnToolsVersion = 26.0;};
-					A80000000000000000000002 = {CreatedOnToolsVersion = 26.0;};
-					A80000000000000000000003 = {CreatedOnToolsVersion = 26.0; TestTargetID = A80000000000000000000001;};
+					A80000000000000000000001 = {
+						CreatedOnToolsVersion = 26.0;
+					};
+					A80000000000000000000002 = {
+						CreatedOnToolsVersion = 26.0;
+					};
+					A80000000000000000000003 = {
+						CreatedOnToolsVersion = 26.0;
+						TestTargetID = A80000000000000000000001;
+					};
 				};
 			};
-			buildConfigurationList = AB0000000000000000000001;
+			buildConfigurationList = AB0000000000000000000001 /* Build configuration list for PBXProject "ByteTrail" */;
 			compatibilityVersion = "Xcode 16.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
-			knownRegions = (en, "zh-Hans", Base);
+			knownRegions = (
+				en,
+				"zh-Hans",
+				Base,
+			);
 			mainGroup = A60000000000000000000001;
-			productRefGroup = A60000000000000000000002;
+			productRefGroup = A60000000000000000000002 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
-			targets = (A80000000000000000000001, A80000000000000000000002, A80000000000000000000003);
+			targets = (
+				A80000000000000000000001 /* ByteTrail */,
+				A80000000000000000000002 /* ByteTrailCore */,
+				A80000000000000000000003 /* ByteTrailCoreTests */,
+			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		AD0000000000000000000001 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
-		AD0000000000000000000002 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
-		AD0000000000000000000003 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		AD0000000000000000000001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AD0000000000000000000002 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AD0000000000000000000003 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		AC0000000000000000000001 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
-		AC0000000000000000000002 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
-		AC0000000000000000000003 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		AC0000000000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AC0000000000000000000002 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AC0000000000000000000003 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		AE0000000000000000000001 /* PBXTargetDependency */ = {isa = PBXTargetDependency; target = A80000000000000000000002 /* ByteTrailCore */; targetProxy = A30000000000000000000001 /* PBXContainerItemProxy */; };
-		AE0000000000000000000002 /* PBXTargetDependency */ = {isa = PBXTargetDependency; target = A80000000000000000000002 /* ByteTrailCore */; targetProxy = A30000000000000000000002 /* PBXContainerItemProxy */; };
-		AE0000000000000000000003 /* PBXTargetDependency */ = {isa = PBXTargetDependency; target = A80000000000000000000001 /* ByteTrail */; targetProxy = A30000000000000000000003 /* PBXContainerItemProxy */; };
+		AE0000000000000000000001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A80000000000000000000002 /* ByteTrailCore */;
+			targetProxy = A30000000000000000000001 /* PBXContainerItemProxy */;
+		};
+		AE0000000000000000000002 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A80000000000000000000002 /* ByteTrailCore */;
+			targetProxy = A30000000000000000000002 /* PBXContainerItemProxy */;
+		};
+		AE0000000000000000000003 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A80000000000000000000001 /* ByteTrail */;
+			targetProxy = A30000000000000000000003 /* PBXContainerItemProxy */;
+		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
-		AF0000000000000000000001 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {CLANG_ENABLE_MODULES = YES; ENABLE_TESTABILITY = YES; MACOSX_DEPLOYMENT_TARGET = 13.0; SDKROOT = macosx; SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG; SWIFT_OPTIMIZATION_LEVEL = "-Onone"; SWIFT_VERSION = 5.0;}; name = Debug;};
-		AF0000000000000000000002 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {CLANG_ENABLE_MODULES = YES; MACOSX_DEPLOYMENT_TARGET = 13.0; SDKROOT = macosx; SWIFT_COMPILATION_MODE = wholemodule; SWIFT_OPTIMIZATION_LEVEL = "-O"; SWIFT_VERSION = 5.0;}; name = Release;};
-		AF0000000000000000000011 /* Debug */ = {isa = XCBuildConfiguration; baseConfigurationReference = A20000000000000000000004; buildSettings = {CODE_SIGN_ENTITLEMENTS = Configuration/ByteTrail.entitlements; INFOPLIST_FILE = Configuration/ByteTrail-Info.plist; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/../Frameworks"); PRODUCT_BUNDLE_IDENTIFIER = com.bytetrail.mac; PRODUCT_NAME = ByteTrail;}; name = Debug;};
-		AF0000000000000000000012 /* Release */ = {isa = XCBuildConfiguration; baseConfigurationReference = A20000000000000000000004; buildSettings = {CODE_SIGN_ENTITLEMENTS = Configuration/ByteTrail.entitlements; INFOPLIST_FILE = Configuration/ByteTrail-Info.plist; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/../Frameworks"); PRODUCT_BUNDLE_IDENTIFIER = com.bytetrail.mac; PRODUCT_NAME = ByteTrail;}; name = Release;};
-		AF0000000000000000000021 /* Debug */ = {isa = XCBuildConfiguration; baseConfigurationReference = A20000000000000000000004; buildSettings = {DEFINES_MODULE = YES; ENABLE_TESTABILITY = YES; GENERATE_INFOPLIST_FILE = YES; PRODUCT_BUNDLE_IDENTIFIER = com.bytetrail.mac.core; PRODUCT_NAME = ByteTrailCore; SKIP_INSTALL = YES; SWIFT_OPTIMIZATION_LEVEL = "-Onone";}; name = Debug;};
-		AF0000000000000000000022 /* Release */ = {isa = XCBuildConfiguration; baseConfigurationReference = A20000000000000000000004; buildSettings = {DEFINES_MODULE = YES; GENERATE_INFOPLIST_FILE = YES; PRODUCT_BUNDLE_IDENTIFIER = com.bytetrail.mac.core; PRODUCT_NAME = ByteTrailCore; SKIP_INSTALL = YES;}; name = Release;};
-		AF0000000000000000000031 /* Debug */ = {isa = XCBuildConfiguration; baseConfigurationReference = A20000000000000000000004; buildSettings = {BUNDLE_LOADER = "$(TEST_HOST)"; GENERATE_INFOPLIST_FILE = YES; PRODUCT_BUNDLE_IDENTIFIER = com.bytetrail.mac.tests; PRODUCT_NAME = ByteTrailCoreTests; TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ByteTrail.app/Contents/MacOS/ByteTrail";}; name = Debug;};
-		AF0000000000000000000032 /* Release */ = {isa = XCBuildConfiguration; baseConfigurationReference = A20000000000000000000004; buildSettings = {BUNDLE_LOADER = "$(TEST_HOST)"; GENERATE_INFOPLIST_FILE = YES; PRODUCT_BUNDLE_IDENTIFIER = com.bytetrail.mac.tests; PRODUCT_NAME = ByteTrailCoreTests; TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ByteTrail.app/Contents/MacOS/ByteTrail";}; name = Release;};
+		AF0000000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				ENABLE_TESTABILITY = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		AF0000000000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		AF0000000000000000000011 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = A20000000000000000000004 /* AppConfiguration.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Configuration/ByteTrail.entitlements;
+				INFOPLIST_FILE = "Configuration/ByteTrail-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.bytetrail.mac;
+				PRODUCT_NAME = ByteTrail;
+			};
+			name = Debug;
+		};
+		AF0000000000000000000012 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = A20000000000000000000004 /* AppConfiguration.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Configuration/ByteTrail.entitlements;
+				INFOPLIST_FILE = "Configuration/ByteTrail-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.bytetrail.mac;
+				PRODUCT_NAME = ByteTrail;
+			};
+			name = Release;
+		};
+		AF0000000000000000000021 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = A20000000000000000000004 /* AppConfiguration.xcconfig */;
+			buildSettings = {
+				DEFINES_MODULE = YES;
+				ENABLE_TESTABILITY = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bytetrail.mac.core;
+				PRODUCT_NAME = ByteTrailCore;
+				SKIP_INSTALL = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		AF0000000000000000000022 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = A20000000000000000000004 /* AppConfiguration.xcconfig */;
+			buildSettings = {
+				DEFINES_MODULE = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bytetrail.mac.core;
+				PRODUCT_NAME = ByteTrailCore;
+				SKIP_INSTALL = YES;
+			};
+			name = Release;
+		};
+		AF0000000000000000000031 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = A20000000000000000000004 /* AppConfiguration.xcconfig */;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bytetrail.mac.tests;
+				PRODUCT_NAME = ByteTrailCoreTests;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ByteTrail.app/Contents/MacOS/ByteTrail";
+			};
+			name = Debug;
+		};
+		AF0000000000000000000032 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = A20000000000000000000004 /* AppConfiguration.xcconfig */;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bytetrail.mac.tests;
+				PRODUCT_NAME = ByteTrailCoreTests;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ByteTrail.app/Contents/MacOS/ByteTrail";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		AB0000000000000000000001 /* Project */ = {isa = XCConfigurationList; buildConfigurations = (AF0000000000000000000001, AF0000000000000000000002); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release;};
-		AB0000000000000000000002 /* ByteTrail */ = {isa = XCConfigurationList; buildConfigurations = (AF0000000000000000000011, AF0000000000000000000012); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release;};
-		AB0000000000000000000003 /* ByteTrailCore */ = {isa = XCConfigurationList; buildConfigurations = (AF0000000000000000000021, AF0000000000000000000022); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release;};
-		AB0000000000000000000004 /* ByteTrailCoreTests */ = {isa = XCConfigurationList; buildConfigurations = (AF0000000000000000000031, AF0000000000000000000032); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release;};
+		AB0000000000000000000001 /* Build configuration list for PBXProject "ByteTrail" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AF0000000000000000000001 /* Debug */,
+				AF0000000000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AB0000000000000000000002 /* Build configuration list for PBXNativeTarget "ByteTrail" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AF0000000000000000000011 /* Debug */,
+				AF0000000000000000000012 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AB0000000000000000000003 /* Build configuration list for PBXNativeTarget "ByteTrailCore" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AF0000000000000000000021 /* Debug */,
+				AF0000000000000000000022 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AB0000000000000000000004 /* Build configuration list for PBXNativeTarget "ByteTrailCoreTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AF0000000000000000000031 /* Debug */,
+				AF0000000000000000000032 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
 	};
 	rootObject = A70000000000000000000001 /* Project object */;

@@ -1,30 +1,56 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <title>ByteTrail application icon</title>
+  <desc>A monochrome storage map with a subtle byte trail.</desc>
   <defs>
-    <linearGradient id="bg" x1="130" y1="80" x2="880" y2="940" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#103C5A"/>
-      <stop offset="0.55" stop-color="#176B75"/>
-      <stop offset="1" stop-color="#29A184"/>
+    <linearGradient id="tile" x1="128" y1="64" x2="896" y2="960" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FCFCFC"/>
+      <stop offset="1" stop-color="#F1F1F0"/>
     </linearGradient>
-    <linearGradient id="trail" x1="280" y1="250" x2="760" y2="770" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#E8FFFA"/>
-      <stop offset="1" stop-color="#A8F1DA"/>
+    <linearGradient id="panel" x1="512" y1="286" x2="512" y2="738" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1D1D1D"/>
+      <stop offset="1" stop-color="#171717"/>
     </linearGradient>
-    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
-      <feDropShadow dx="0" dy="24" stdDeviation="26" flood-color="#082635" flood-opacity=".35"/>
+    <filter id="shadow" x="-20%" y="-25%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="24" stdDeviation="28" flood-color="#000000" flood-opacity=".16"/>
     </filter>
   </defs>
-  <rect x="42" y="42" width="940" height="940" rx="218" fill="url(#bg)"/>
-  <path d="M208 662c76 0 103-91 171-91 79 0 83 157 174 157 74 0 93-121 180-121h78" fill="none" stroke="#7BE0C4" stroke-width="30" stroke-linecap="round" opacity=".45"/>
+
+  <rect x="32" y="32" width="960" height="960" rx="224" fill="url(#tile)"/>
+  <rect x="33" y="33" width="958" height="958" rx="223" fill="none" stroke="#E8E8E7" stroke-width="2"/>
+
   <g filter="url(#shadow)">
-    <circle cx="310" cy="387" r="112" fill="#F3FFFC" fill-opacity=".97"/>
-    <circle cx="310" cy="387" r="53" fill="#176B75"/>
-    <circle cx="630" cy="387" r="112" fill="#F3FFFC" fill-opacity=".97"/>
-    <circle cx="630" cy="387" r="53" fill="#238C7C"/>
-    <circle cx="470" cy="674" r="112" fill="#F3FFFC" fill-opacity=".97"/>
-    <circle cx="470" cy="674" r="53" fill="#269D80"/>
+    <rect x="126" y="286" width="772" height="452" rx="54" fill="url(#panel)"/>
   </g>
-  <path d="M398 387h120M365 482l52 92M575 482l-52 92" fill="none" stroke="url(#trail)" stroke-width="38" stroke-linecap="round"/>
-  <circle cx="310" cy="387" r="19" fill="#C3F4E6"/>
-  <circle cx="630" cy="387" r="19" fill="#C3F4E6"/>
-  <circle cx="470" cy="674" r="19" fill="#C3F4E6"/>
+  <path d="M168 306H856" fill="none" stroke="#2B2B2B" stroke-width="10" stroke-linecap="round"/>
+
+  <g>
+    <rect x="174" y="348" width="96" height="68" rx="10" fill="#F7F7F7"/>
+    <rect x="292" y="348" width="96" height="68" rx="10" fill="#E7E7E7"/>
+    <rect x="410" y="348" width="96" height="68" rx="10" fill="#A1A1A1"/>
+    <rect x="528" y="348" width="96" height="68" rx="10" fill="#5B5B5B"/>
+    <rect x="646" y="348" width="96" height="68" rx="10" fill="#343434"/>
+    <rect x="764" y="348" width="96" height="68" rx="10" fill="#292929"/>
+
+    <rect x="174" y="438" width="96" height="68" rx="10" fill="#F5F5F5"/>
+    <rect x="292" y="438" width="96" height="68" rx="10" fill="#C3C3C3"/>
+    <rect x="410" y="438" width="96" height="68" rx="10" fill="#858585"/>
+    <rect x="528" y="438" width="96" height="68" rx="10" fill="#464646"/>
+    <rect x="646" y="438" width="96" height="68" rx="10" fill="#303030"/>
+    <rect x="764" y="438" width="96" height="68" rx="10" fill="#272727"/>
+  </g>
+
+  <g fill="none" stroke-linecap="round">
+    <path d="M174 566H424" stroke="#303030" stroke-width="5"/>
+    <path d="M174 596H330" stroke="#2A2A2A" stroke-width="5"/>
+    <path d="M174 626H286" stroke="#252525" stroke-width="5"/>
+    <path d="M222 526V566H324V526M396 526V566" stroke="#292929" stroke-width="4"/>
+    <path d="M174 696H850" stroke="#2B2B2B" stroke-width="6"/>
+  </g>
+  <g fill="#3A3A3A">
+    <circle cx="222" cy="566" r="7"/>
+    <circle cx="324" cy="566" r="7"/>
+    <circle cx="396" cy="566" r="7"/>
+  </g>
+  <rect x="652" y="566" width="194" height="28" rx="7" fill="#292929"/>
+  <rect x="652" y="566" width="70" height="28" rx="7" fill="#3A3A3A"/>
 </svg>
