@@ -16,6 +16,152 @@ public enum CleanupOperationError: Error, LocalizedError {
     }
 }
 
+public enum TrashEmptyingError: Error, LocalizedError, Equatable {
+    case invalidTrashRoot
+    case trashUnavailable
+
+    public var errorDescription: String? {
+        switch self {
+        case .invalidTrashRoot:
+            return "The Trash location failed the safety check."
+        case .trashUnavailable:
+            return "The Trash folder is unavailable or is not a directory."
+        }
+    }
+}
+
+public struct TrashEmptyingFailure: Identifiable, Sendable, Equatable {
+    public let id: UUID
+    public let itemName: String
+    public let message: String
+
+    public init(id: UUID = UUID(), itemName: String, message: String) {
+        self.id = id
+        self.itemName = itemName
+        self.message = message
+    }
+}
+
+public struct TrashEmptyingResult: Sendable, Equatable {
+    public let removedItemCount: Int
+    public let bytesFreed: Int64
+    public let failures: [TrashEmptyingFailure]
+
+    public init(removedItemCount: Int, bytesFreed: Int64, failures: [TrashEmptyingFailure]) {
+        self.removedItemCount = removedItemCount
+        self.bytesFreed = bytesFreed
+        self.failures = failures
+    }
+}
+
+public protocol TrashEmptying: Sendable {
+    func emptyTrash() throws -> TrashEmptyingResult
+}
+
+/// Permanently removes the immediate children of one validated Trash directory.
+///
+/// Release builds accept only the current user's exact `~/.Trash` directory. Debug
+/// builds accept only a synthetic directory below the standardized system temporary
+/// directory, so automated and UI development can never empty the real user Trash.
+public struct TrashEmptyingService: TrashEmptying, @unchecked Sendable {
+    public let trashRoot: URL
+    private let homeDirectory: URL
+    private let fileManager: FileManager
+    private let sizeCalculator: FileSizeCalculator
+
+    public init(
+        trashRoot: URL? = nil,
+        homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser,
+        fileManager: FileManager = .default,
+        sizeCalculator: FileSizeCalculator = FileSizeCalculator()
+    ) {
+        self.homeDirectory = homeDirectory.standardizedFileURL
+        self.trashRoot = (trashRoot ?? homeDirectory.appendingPathComponent(".Trash", isDirectory: true)).standardizedFileURL
+        self.fileManager = fileManager
+        self.sizeCalculator = sizeCalculator
+    }
+
+    public func emptyTrash() throws -> TrashEmptyingResult {
+        let root = try validatedTrashRoot()
+        guard fileManager.fileExists(atPath: root.path) else {
+            return TrashEmptyingResult(removedItemCount: 0, bytesFreed: 0, failures: [])
+        }
+        let children = try fileManager.contentsOfDirectory(
+            at: root,
+            includingPropertiesForKeys: [.isDirectoryKey, .isRegularFileKey, .isSymbolicLinkKey],
+            options: []
+        )
+        var removedItemCount = 0
+        var bytesFreed: Int64 = 0
+        var failures: [TrashEmptyingFailure] = []
+        let initialRootIdentity = try rootIdentity(root)
+
+        for child in children {
+            if Task.isCancelled { break }
+            guard (try? rootIdentity(root)) == initialRootIdentity else {
+                failures.append(TrashEmptyingFailure(itemName: root.lastPathComponent, message: TrashEmptyingError.invalidTrashRoot.localizedDescription))
+                break
+            }
+            let candidate = child.standardizedFileURL
+            guard PathContainmentValidator().isContained(candidate, in: root, allowRootItself: false) else {
+                failures.append(TrashEmptyingFailure(itemName: child.lastPathComponent, message: TrashEmptyingError.invalidTrashRoot.localizedDescription))
+                continue
+            }
+            do {
+                try DevelopmentSafetyLock.validateMutation(at: candidate)
+                let measuredBytes = (try? sizeCalculator.calculate(candidate, skipPackageDescendants: false).allocatedBytes) ?? 0
+                try fileManager.removeItem(at: candidate)
+                removedItemCount += 1
+                bytesFreed += measuredBytes
+            } catch {
+                failures.append(TrashEmptyingFailure(itemName: child.lastPathComponent, message: error.localizedDescription))
+            }
+        }
+
+        return TrashEmptyingResult(
+            removedItemCount: removedItemCount,
+            bytesFreed: bytesFreed,
+            failures: failures
+        )
+    }
+
+    private func validatedTrashRoot() throws -> URL {
+        let root = trashRoot.standardizedFileURL
+
+        #if DEBUG
+        let temporaryRoot = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true).standardizedFileURL
+        guard PathContainmentValidator().isContained(root, in: temporaryRoot, allowRootItself: false),
+              DevelopmentSafetyLock.permitsMutation(at: root) else {
+            throw TrashEmptyingError.invalidTrashRoot
+        }
+        #else
+        let expected = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".Trash", isDirectory: true)
+            .standardizedFileURL
+        guard root == expected else { throw TrashEmptyingError.invalidTrashRoot }
+        #endif
+
+        guard root.path != "/", root != homeDirectory else { throw TrashEmptyingError.invalidTrashRoot }
+        guard fileManager.fileExists(atPath: root.path) else {
+            return root
+        }
+        let values = try root.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
+        guard values.isDirectory == true,
+              values.isSymbolicLink != true else {
+            throw TrashEmptyingError.trashUnavailable
+        }
+        return root
+    }
+
+    private func rootIdentity(_ root: URL) throws -> String {
+        let values = try root.resourceValues(forKeys: [.fileResourceIdentifierKey, .isDirectoryKey, .isSymbolicLinkKey])
+        guard values.isDirectory == true, values.isSymbolicLink != true else {
+            throw TrashEmptyingError.trashUnavailable
+        }
+        return values.fileResourceIdentifier.map { String(describing: $0) } ?? root.path
+    }
+}
+
 public struct TrashCleanupOperation: @unchecked Sendable {
     private let fileManager: FileManager
     public init(fileManager: FileManager = .default) { self.fileManager = fileManager }
@@ -24,7 +170,7 @@ public struct TrashCleanupOperation: @unchecked Sendable {
         try DevelopmentSafetyLock.validateMutation(at: source)
         #if DEBUG
         // FileManager.trashItem would move even a synthetic fixture into the real user Trash.
-        // Debug builds refuse that boundary crossing and allow the coordinator to use its vault fallback.
+        // Debug builds refuse that boundary crossing entirely.
         throw CleanupOperationError.trashUnavailable
         #else
         var resultingURL: NSURL?
@@ -179,16 +325,8 @@ public actor CleanupCoordinator {
             case .recoveryVault:
                 return try await moveToVault(item: item)
             case .moveToTrash:
-                do {
-                    let destination = try trashOperation.execute(source: original)
-                    return await record(item: item, result: CleanupResult(itemID: item.id, status: .movedToTrash, originalURL: original, resultingURL: destination, bytesProcessed: item.allocatedSize, message: "Moved to Trash."))
-                } catch {
-                    // Application bundles live under protected Applications roots. If Trash is
-                    // unavailable, fail closed instead of vaulting an app that restore policy
-                    // would correctly refuse to write back into a protected root.
-                    if item.category == .applicationBundle { throw error }
-                    return try await moveToVault(item: item)
-                }
+                let destination = try trashOperation.execute(source: original)
+                return await record(item: item, result: CleanupResult(itemID: item.id, status: .movedToTrash, originalURL: original, resultingURL: destination, bytesProcessed: item.allocatedSize, message: "Moved to Trash."))
             }
         } catch {
             return await record(item: item, result: CleanupResult(itemID: item.id, status: .failed, originalURL: original, resultingURL: nil, bytesProcessed: 0, message: error.localizedDescription))

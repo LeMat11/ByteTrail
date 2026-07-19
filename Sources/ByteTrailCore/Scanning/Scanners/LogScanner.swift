@@ -5,6 +5,10 @@ public struct LogScanner: ScannerProtocol {
     public let displayName = "Application Logs"
     public init() {}
 
+    public func coverageLocations(context: ScanContext) -> [ScanCoverageLocation] {
+        [coverageLocation(context.homeDirectory.appendingPathComponent("Library/Logs", isDirectory: true))]
+    }
+
     public func scan(context: ScanContext) -> AsyncStream<ScanEvent> {
         AsyncStream { continuation in
             let producer = Task.detached {

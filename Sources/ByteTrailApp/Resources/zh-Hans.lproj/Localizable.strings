@@ -8,6 +8,7 @@
 "section.developerStorage" = "开发者存储";
 "section.largeFiles" = "大文件";
 "section.trash" = "废纸篓";
+"section.coverage" = "扫描覆盖";
 "section.history" = "清理历史";
 "section.settings" = "设置";
 
@@ -22,6 +23,8 @@
 "action.cleanUpSelected" = "清理所选项目";
 "action.simulateCleanup" = "模拟清理";
 "action.done" = "完成";
+"action.close" = "关闭";
+"action.stopCleanup" = "完成当前项目后停止";
 "action.revealFinder" = "在访达中显示";
 "action.excludePath" = "排除此路径";
 "action.excludeSource" = "排除 %@";
@@ -93,6 +96,20 @@
 "empty.scanningHelp" = "识别来源后，结果会显示在这里。";
 "empty.noFindingsHelp" = "运行扫描以识别这台 Mac 上的存储来源。";
 
+"trash.summary" = "%ld 个项目 · %@";
+"trash.help" = "移入这里的项目仍可恢复，并继续占用磁盘空间。“清空废纸篓”会像访达一样永久移除当前显示的全部内容。";
+"trash.action.empty" = "清空废纸篓";
+"trash.confirm.title" = "永久清空废纸篓？";
+"trash.confirm.message" = "这会永久移除 %ld 个项目（%@），且无法撤销；不会触碰其他位置。";
+"trash.debugDisabled" = "Debug 构建中已禁用；永久删除测试只使用临时合成夹具。";
+"trash.emptying" = "正在清空…";
+"trash.result.title" = "空间已释放";
+"trash.result.partialTitle" = "部分清理已完成";
+"trash.result.detail" = "已永久移除 %ld 个顶层项目";
+"trash.result.failures" = "%ld 个项目无法移除，仍保留在废纸篓中。";
+"trash.error.title" = "无法清空废纸篓";
+"trash.error.unknown" = "清空废纸篓时发生未知错误。";
+
 "risk.safe" = "安全";
 "risk.review" = "需检查";
 "risk.protected" = "受保护";
@@ -152,6 +169,7 @@
 "accessibility.risk" = "风险：%@";
 "accessibility.finding" = "%@，来源 %@，%@，%@";
 "accessibility.cleanupEvidence" = "%@ 的清理依据";
+"evidence.details" = "项目明细";
 
 "cache.applicationRunning" = "应用正在运行";
 "cache.runningCleanupBlocked" = "请退出来源应用并重新扫描，然后再清理此缓存。";
@@ -171,6 +189,10 @@
 "cleanup.results" = "清理结果";
 "cleanup.simulationResults" = "模拟结果";
 "cleanup.inProgress" = "正在清理所选项目…";
+"cleanup.inProgressDetail" = "正在处理 %ld 个所选项目。较大的文件夹可能需要一些时间。";
+"cleanup.cancellationPending" = "当前文件操作完成后将停止…";
+"cleanup.noResults" = "没有清理结果";
+"cleanup.noResultsHelp" = "没有修改任何内容。请关闭窗口并重新检查选择。";
 "message.duplicateSkipped" = "已跳过重复的清理目标。";
 "message.overlapSkipped" = "已跳过重叠的子目标，避免同一份数据被重复处理。";
 "message.safetySkipped" = "安全策略不允许清理此项目。";
@@ -183,6 +205,7 @@
 "message.locationUnavailable" = "授权的扫描位置不可用。";
 "message.resultLimit" = "已达到结果数量上限。请提高大小阈值或缩小扫描范围。";
 "message.applicationRunning" = "来源应用正在运行。请退出应用并重新扫描后再清理。";
+"message.cleanupCancelled" = "此项目在处理前已取消清理。";
 "message.cacheRuleUnavailable" = "应用缓存规则不可用。";
 "message.largeFileRuleUnavailable" = "大文件规则不可用。";
 "message.logRulesUnavailable" = "日志规则不可用。";
@@ -201,6 +224,8 @@
 "message.permissionDenied" = "当前权限无法写入该项目。";
 "message.developmentLock" = "Debug 清理仅限通过验证的临时测试夹具。";
 "message.trashUnavailable" = "当前环境无法移到废纸篓。";
+"message.invalidTrashRoot" = "废纸篓位置未通过安全检查。";
+"message.trashFolderUnavailable" = "废纸篓文件夹不可用或不是目录。";
 "message.destinationExists" = "恢复位置已存在同名文件。";
 "message.invalidRecovery" = "恢复仓库目标路径无效。";
 "message.recoveryMissing" = "恢复仓库中的项目已不存在。";
@@ -257,7 +282,7 @@
 "settings.scanner.largeFiles" = "大文件";
 "settings.scanner.largeFiles.help" = "递归扫描下载文件夹和用户授权位置";
 "settings.scanner.trash" = "废纸篓";
-"settings.scanner.trash.help" = "只读分析；ByteTrail 永远不会清空废纸篓";
+"settings.scanner.trash.help" = "扫描为只读；永久清空必须在废纸篓页面单独确认";
 "settings.scanner.backups" = "iOS 备份";
 "settings.scanner.backups.help" = "完整的本地备份单元；始终需要检查";
 
@@ -271,7 +296,7 @@
 "rule.application.cache.evidence" = "缓存目录名与已安装应用的 Bundle ID 完全一致。";
 "rule.application.leftover.what" = "一项需要逐个检查的可能应用残留。";
 "rule.application.leftover.reason" = "没有发现 Bundle ID 完全相同的已安装应用，但这不能证明该数据已经无人使用。";
-"rule.application.leftover.impact" = "已卸载应用、后台辅助程序或命令行工具仍可能依赖它；ByteTrail 会把该项目保留为可恢复状态。";
+"rule.application.leftover.impact" = "已卸载应用、后台辅助程序或命令行工具仍可能依赖它；明确清空废纸篓前，该项目仍可恢复。";
 "rule.application.leftover.evidence" = "匹配到 Bundle ID 形状的顶层项目，且没有找到 Bundle ID 相同的已安装应用。";
 "rule.cache.user-app.what" = "应用为了避免重复工作而保存的临时数据。";
 "rule.cache.user-app.reason" = "应用可以在需要时重新创建缓存内容。";
@@ -279,7 +304,7 @@
 "rule.cache.user-app.evidence" = "匹配到用户缓存根目录中的顶层目录。";
 "rule.trash.user-item.what" = "当前位于此用户废纸篓中的项目。";
 "rule.trash.user-item.reason" = "该项目已经在废纸篓中，但永久移除需要另行决定。";
-"rule.trash.user-item.impact" = "ByteTrail 不会清理此项目；请在访达中单独检查或清空废纸篓。";
+"rule.trash.user-item.impact" = "只有在废纸篓页面另行明确确认后，ByteTrail 才会永久移除此项目。";
 "rule.trash.user-item.evidence" = "由只读废纸篓扫描器发现。";
 "rule.cache.sandbox.what" = "保存在应用沙盒内的临时数据。";
 "rule.cache.sandbox.reason" = "应用可以在需要时重新创建这个精确的缓存叶节点。";
@@ -349,3 +374,24 @@
 "rule.ios.local-backup.reason" = "确认存在其他可用备份后，可以移除旧的本地设备备份。";
 "rule.ios.local-backup.impact" = "这会移除整个本地备份；ByteTrail 不会单独修改其内部文件。";
 "rule.ios.local-backup.evidence" = "匹配到 Apple MobileSync 备份根目录中的完整备份目录。";
+
+"coverage.title" = "扫描覆盖";
+"coverage.explanation" = "准确查看 ByteTrail 检查过哪些位置。“无可清理项”表示该位置已成功扫描；它不同于位置不可用或根本没有扫描。";
+"coverage.empty.title" = "还没有覆盖报告";
+"coverage.empty.help" = "运行扫描后，即可查看每个检查位置，包括没有发现可清理项的位置。";
+"coverage.filter.label" = "状态";
+"coverage.filter.all" = "全部状态";
+"coverage.visibleCount" = "显示 %d 个位置";
+"coverage.findingCount" = "%d 个发现";
+"coverage.summary.locations" = "扫描位置";
+"coverage.summary.withFindings" = "有发现";
+"coverage.summary.noFindings" = "无可清理项";
+"coverage.summary.needsAttention" = "需要注意";
+"coverage.status.pending" = "等待扫描";
+"coverage.status.scanned" = "发现可清理项";
+"coverage.status.noFindings" = "已扫描—无可清理项";
+"coverage.status.notFound" = "位置不存在";
+"coverage.status.permissionDenied" = "权限不足";
+"coverage.status.partial" = "部分扫描";
+"coverage.status.disabled" = "未启用";
+"coverage.status.cancelled" = "已取消";

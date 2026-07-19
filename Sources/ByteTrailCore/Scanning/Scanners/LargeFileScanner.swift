@@ -9,6 +9,11 @@ public struct LargeFileScanner: ScannerProtocol {
         self.maximumResults = maximumResults
     }
 
+    public func coverageLocations(context: ScanContext) -> [ScanCoverageLocation] {
+        let defaultRoot = context.homeDirectory.appendingPathComponent("Downloads", isDirectory: true)
+        return normalizedRoots([defaultRoot] + context.settings.authorizedFolders).map(coverageLocation)
+    }
+
     public func scan(context: ScanContext) -> AsyncStream<ScanEvent> {
         AsyncStream { continuation in
             let producer = Task.detached {

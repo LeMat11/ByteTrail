@@ -30,7 +30,7 @@ final class CleanupTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: child.path))
     }
 
-    func testEmbeddedDynamicRuleCleanupStaysInsideTemporaryFixture() async throws {
+    func testEmbeddedMoveToTrashRuleFailsClosedInDebug() async throws {
         let fixture = try TemporaryFixture()
         let root = try fixture.directory("authorized")
         let file = try fixture.file("authorized/large.bin", bytes: 256)
@@ -49,11 +49,10 @@ final class CleanupTests: XCTestCase {
         let results = await coordinator.clean(items: [item], dryRun: false)
         let result = try XCTUnwrap(results.first)
 
-        XCTAssertEqual(result.status, .movedToRecovery)
-        XCTAssertFalse(FileManager.default.fileExists(atPath: file.path))
+        XCTAssertEqual(result.status, .failed)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: file.path))
         let recoveryEntries = await recoveryStore.allEntries()
-        let recovery = try XCTUnwrap(recoveryEntries.first)
-        XCTAssertTrue(PathContainmentValidator().isContained(recovery.recoveryURL, in: fixture.root))
+        XCTAssertTrue(recoveryEntries.isEmpty)
     }
 
     func testDryRunDoesNotModifyFixtureAndRecordsHistory() async throws {
@@ -167,6 +166,57 @@ final class CleanupTests: XCTestCase {
         let file = try fixture.file("trash-fixture", bytes: 4)
         XCTAssertThrowsError(try TrashCleanupOperation().execute(source: file))
         XCTAssertTrue(FileManager.default.fileExists(atPath: file.path))
+        #endif
+    }
+
+    func testTrashEmptyingPermanentlyRemovesOnlySyntheticFixtureChildren() throws {
+        let fixture = try TemporaryFixture()
+        let systemTemporary = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true).standardizedFileURL
+        let trashRoot = try fixture.directory("SyntheticTrash-\(UUID().uuidString)")
+        print("ByteTrail synthetic Trash fixture: \(trashRoot.standardizedFileURL.path)")
+        XCTAssertTrue(PathContainmentValidator().isContained(trashRoot, in: systemTemporary, allowRootItself: false))
+        let first = try fixture.file("\(trashRoot.lastPathComponent)/first.bin", bytes: 4_096)
+        let nested = try fixture.file("\(trashRoot.lastPathComponent)/folder/second.bin", bytes: 8_192)
+        let outside = try fixture.file("must-remain.bin", bytes: 128)
+        let service = TrashEmptyingService(trashRoot: trashRoot, homeDirectory: fixture.root)
+
+        let result = try service.emptyTrash()
+
+        XCTAssertEqual(result.removedItemCount, 2)
+        XCTAssertGreaterThanOrEqual(result.bytesFreed, 12_288)
+        XCTAssertTrue(result.failures.isEmpty)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: first.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: nested.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: trashRoot.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: outside.path))
+    }
+
+    func testTrashEmptyingRemovesSymlinkWithoutTouchingItsTarget() throws {
+        let fixture = try TemporaryFixture()
+        let systemTemporary = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true).standardizedFileURL
+        let trashRoot = try fixture.directory("SyntheticTrash-\(UUID().uuidString)")
+        print("ByteTrail synthetic Trash fixture: \(trashRoot.standardizedFileURL.path)")
+        XCTAssertTrue(PathContainmentValidator().isContained(trashRoot, in: systemTemporary, allowRootItself: false))
+        let outside = try fixture.file("outside/keep.bin", bytes: 256)
+        let link = trashRoot.appendingPathComponent("linked-item")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: outside)
+        let service = TrashEmptyingService(trashRoot: trashRoot, homeDirectory: fixture.root)
+
+        let result = try service.emptyTrash()
+
+        XCTAssertEqual(result.removedItemCount, 1)
+        XCTAssertTrue(result.failures.isEmpty)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: link.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: outside.path))
+    }
+
+    func testTrashEmptyingCannotTargetRealUserTrashInDebug() throws {
+        #if DEBUG
+        let realTrash = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".Trash", isDirectory: true)
+        let service = TrashEmptyingService(trashRoot: realTrash)
+        XCTAssertThrowsError(try service.emptyTrash()) { error in
+            XCTAssertEqual(error as? TrashEmptyingError, .invalidTrashRoot)
+        }
         #endif
     }
 }

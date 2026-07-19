@@ -18,6 +18,7 @@ struct FindingsView: View {
     let titleKey: String
     let categories: Set<ScanCategory>?
     let scannerIDs: Set<String>?
+    let allowsCleanupSelection: Bool
     @EnvironmentObject private var model: AppViewModel
     @State private var search = ""
     @State private var sort: FindingsSort = .size
@@ -30,11 +31,13 @@ struct FindingsView: View {
         titleKey: String,
         categories: Set<ScanCategory>? = nil,
         scannerIDs: Set<String>? = nil,
-        groupBySource: Bool = false
+        groupBySource: Bool = false,
+        allowsCleanupSelection: Bool = true
     ) {
         self.titleKey = titleKey
         self.categories = categories
         self.scannerIDs = scannerIDs
+        self.allowsCleanupSelection = allowsCleanupSelection
         _grouping = State(initialValue: groupBySource ? .source : .risk)
     }
 
@@ -100,7 +103,7 @@ struct FindingsView: View {
         .navigationTitle(model.t(titleKey))
         .sheet(isPresented: $showingEvidence) {
             if let selectedID, let item = model.items.first(where: { $0.id == selectedID }) {
-                EvidenceDetailView(item: item)
+                EvidenceDetailView(item: item, showsCloseButton: true)
                     .environmentObject(model)
                     .frame(minWidth: 420, idealWidth: 620, minHeight: 480, idealHeight: 640)
             }
@@ -108,6 +111,7 @@ struct FindingsView: View {
         .sheet(isPresented: $showingResults) {
             CleanupResultView().environmentObject(model)
         }
+        .detailPaneStyle()
     }
 
     private var findingsPane: some View {
@@ -132,8 +136,9 @@ struct FindingsView: View {
                     }
                 }
                 .listStyle(.inset)
+                .scrollContentBackground(.hidden)
             }
-            selectionBar
+            if allowsCleanupSelection { selectionBar }
         }
     }
 
@@ -159,7 +164,7 @@ struct FindingsView: View {
                 groupingPicker.frame(width: 145)
                 sortPicker.frame(width: 110)
                 Spacer()
-                selectionButtons
+                if allowsCleanupSelection { selectionButtons }
             }
             .fixedSize(horizontal: true, vertical: false)
 
@@ -169,7 +174,7 @@ struct FindingsView: View {
                     groupingPicker
                     sortPicker
                     Spacer()
-                    selectionButtons
+                    if allowsCleanupSelection { selectionButtons }
                 }
             }
         }
@@ -197,13 +202,15 @@ struct FindingsView: View {
 
     private func row(_ item: CleanableItem) -> some View {
         HStack(spacing: 10) {
-            Toggle("", isOn: Binding(
-                get: { model.items.first(where: { $0.id == item.id })?.selected ?? false },
-                set: { model.setSelected(item.id, selected: $0) }
-            ))
-            .labelsHidden()
-            .toggleStyle(.checkbox)
-            .disabled(!model.canSelect(item))
+            if allowsCleanupSelection {
+                Toggle("", isOn: Binding(
+                    get: { model.items.first(where: { $0.id == item.id })?.selected ?? false },
+                    set: { model.setSelected(item.id, selected: $0) }
+                ))
+                .labelsHidden()
+                .toggleStyle(.checkbox)
+                .disabled(!model.canSelect(item))
+            }
             FindingIcon(item: item, size: 22)
                 .frame(width: 24, height: 24)
             VStack(alignment: .leading, spacing: 3) {
@@ -222,8 +229,10 @@ struct FindingsView: View {
         .tag(item.id)
         .contextMenu {
             Button(model.t("action.revealFinder")) { model.reveal(item) }
-            Button(model.t("action.excludePath")) { model.exclude(item) }
-            Button(model.t("action.excludeSource", model.sourceName(item))) { model.excludeSource(item.provenance.producedByName) }
+            if allowsCleanupSelection {
+                Button(model.t("action.excludePath")) { model.exclude(item) }
+                Button(model.t("action.excludeSource", model.sourceName(item))) { model.excludeSource(item.provenance.producedByName) }
+            }
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(model.t(
@@ -265,11 +274,10 @@ struct FindingsView: View {
 
     private var cleanupButton: some View {
         Button(model.dryRun ? model.t("action.simulateCleanup") : model.t("action.cleanUpSelected")) {
-            model.cleanSelected()
-            showingResults = true
+            if model.cleanSelected() { showingResults = true }
         }
         .buttonStyle(.borderedProminent)
-        .disabled(model.selectedItems.isEmpty)
+        .disabled(model.selectedItems.isEmpty || model.isCleaning)
     }
 
     private func groupTitle(_ key: String) -> String {
@@ -325,7 +333,7 @@ struct ApplicationsView: View {
                 }
             }
             .padding(14)
-            .background(.blue.opacity(0.06))
+            .background(DetailTheme.panelBackground)
             Divider()
             FindingsView(
                 titleKey: "section.applications",
@@ -365,7 +373,7 @@ struct ApplicationsView: View {
                 .font(.caption).foregroundStyle(.secondary)
         }
         .padding(10)
-        .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 10))
+        .background(DetailTheme.panelBackground, in: RoundedRectangle(cornerRadius: 10))
     }
 }
 
@@ -375,10 +383,10 @@ struct SystemDataView: View {
         VStack(spacing: 0) {
             Text(model.t("systemData.explanation"))
                 .frame(maxWidth: .infinity, alignment: .leading).padding(14)
-                .background(.blue.opacity(0.08))
+                .background(DetailTheme.panelBackground)
             FindingsView(
                 titleKey: "section.systemData",
-                categories: [.userCache, .userLog, .xcodeDerivedData, .xcodeArchive, .xcodeDeviceSupport, .simulatorData, .developerCache, .iosBackup, .installer, .trash]
+                categories: [.userCache, .userLog, .xcodeDerivedData, .xcodeArchive, .xcodeDeviceSupport, .simulatorData, .developerCache, .iosBackup, .installer]
             )
         }
     }
@@ -426,7 +434,7 @@ struct LargeFilesView: View {
                 }
             }
             .padding(14)
-            .background(.blue.opacity(0.06))
+            .background(DetailTheme.panelBackground)
             Divider()
             FindingsView(titleKey: "section.largeFiles", categories: [.largeFile, .installer])
         }
@@ -453,8 +461,31 @@ struct CleanupResultView: View {
         VStack(alignment: .leading, spacing: 14) {
             Text(model.t(model.dryRun ? "cleanup.simulationResults" : "cleanup.results"))
                 .font(.title2.weight(.semibold))
-            if model.cleanupResults.isEmpty {
-                ProgressView(model.t("cleanup.inProgress")).frame(maxWidth: .infinity, maxHeight: .infinity)
+            if model.isCleaning {
+                VStack(spacing: 14) {
+                    ProgressView().controlSize(.large)
+                    Text(model.t("cleanup.inProgress")).font(.headline)
+                    Text(model.t("cleanup.inProgressDetail", model.cleanupTargetCount))
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                    if model.cleanupCancellationRequested {
+                        Label(model.t("cleanup.cancellationPending"), systemImage: "hourglass")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if model.cleanupResults.isEmpty {
+                VStack(spacing: 12) {
+                    Image(systemName: "exclamationmark.circle")
+                        .font(.system(size: 32))
+                        .foregroundStyle(.secondary)
+                    Text(model.t("cleanup.noResults")).font(.headline)
+                    Text(model.t("cleanup.noResultsHelp"))
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 List(model.cleanupResults) { result in
                     HStack {
@@ -469,7 +500,15 @@ struct CleanupResultView: View {
                     }
                 }
             }
-            HStack { Spacer(); Button(model.t("action.done")) { dismiss() }.keyboardShortcut(.defaultAction) }
+            HStack {
+                Spacer()
+                if model.isCleaning {
+                    Button(model.t("action.stopCleanup"), role: .cancel) { model.cancelCleanup() }
+                        .disabled(model.cleanupCancellationRequested)
+                } else {
+                    Button(model.t("action.done")) { dismiss() }.keyboardShortcut(.defaultAction)
+                }
+            }
         }
         .padding(20)
         .frame(minWidth: 420, idealWidth: 620, maxWidth: 700, minHeight: 340, idealHeight: 400, maxHeight: 560)

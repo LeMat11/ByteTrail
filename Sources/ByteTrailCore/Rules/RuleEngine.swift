@@ -174,7 +174,13 @@ public struct RuleLoader: Sendable {
             return try decode(data: Data(contentsOf: appResource), homeDirectory: homeDirectory)
         }
         #if SWIFT_PACKAGE
-        let resourceBundle = Bundle.module
+        let bundleName = "ByteTrail_ByteTrailCore"
+        let candidates = [
+            Bundle.main.resourceURL?.appendingPathComponent("\(bundleName).bundle", isDirectory: true),
+            Bundle.main.bundleURL.appendingPathComponent("\(bundleName).bundle", isDirectory: true),
+            Bundle.main.executableURL?.deletingLastPathComponent().appendingPathComponent("\(bundleName).bundle", isDirectory: true)
+        ].compactMap { $0 }
+        let resourceBundle = candidates.lazy.compactMap { Bundle(url: $0) }.first ?? Bundle.module
         #else
         let resourceBundle = Bundle(for: ByteTrailBundleToken.self)
         #endif

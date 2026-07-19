@@ -5,6 +5,15 @@ public struct CacheScanner: ScannerProtocol {
     public let displayName = "Application Caches"
     public init() {}
 
+    public func coverageLocations(context: ScanContext) -> [ScanCoverageLocation] {
+        let library = context.homeDirectory.appendingPathComponent("Library", isDirectory: true)
+        return [
+            library.appendingPathComponent("Caches", isDirectory: true),
+            library.appendingPathComponent("Containers", isDirectory: true),
+            library.appendingPathComponent("Group Containers", isDirectory: true)
+        ].map(coverageLocation)
+    }
+
     public func scan(context: ScanContext) -> AsyncStream<ScanEvent> {
         AsyncStream { continuation in
             let producer = Task.detached {

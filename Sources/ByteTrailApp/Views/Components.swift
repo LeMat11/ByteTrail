@@ -2,6 +2,25 @@ import AppKit
 import ByteTrailCore
 import SwiftUI
 
+enum DetailTheme {
+    static let background = Color(nsColor: .windowBackgroundColor)
+    static let panelBackground = Color(nsColor: .controlBackgroundColor)
+}
+
+private struct DetailPaneStyle: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .font(.body)
+            .background(DetailTheme.background)
+    }
+}
+
+extension View {
+    func detailPaneStyle() -> some View {
+        modifier(DetailPaneStyle())
+    }
+}
+
 struct FindingIcon: View {
     let item: CleanableItem
     let size: CGFloat
@@ -76,7 +95,7 @@ struct MetricCard: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 12))
+        .background(DetailTheme.panelBackground, in: RoundedRectangle(cornerRadius: 12))
     }
 }
 
@@ -98,11 +117,25 @@ struct EmptyFindingsView: View {
 
 struct EvidenceDetailView: View {
     let item: CleanableItem
+    var showsCloseButton = false
     @EnvironmentObject private var model: AppViewModel
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
+        VStack(spacing: 0) {
+            if showsCloseButton {
+                HStack {
+                    Text(model.t("evidence.details")).font(.headline)
+                    Spacer()
+                    Button(model.t("action.close")) { dismiss() }
+                        .keyboardShortcut(.cancelAction)
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+                Divider()
+            }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
                 ViewThatFits(in: .horizontal) {
                     HStack(alignment: .top) {
                         evidenceHeading
@@ -153,8 +186,9 @@ struct EvidenceDetailView: View {
                     evidenceActions
                     VStack(alignment: .leading) { evidenceActions }
                 }
+                }
+                .padding(20)
             }
-            .padding(20)
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(model.t("accessibility.cleanupEvidence", item.displayName))

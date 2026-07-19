@@ -24,7 +24,7 @@
     "id": "trash.user-item", "version": 1, "displayName": "Trash Item", "producedBy": "Unknown source", "producedByIdentifier": null,
     "sourceType": "userFile", "category": "trash", "approvedRoots": ["~/.Trash"], "risk": "review", "regeneratable": false,
     "minimumAgeDays": 0, "cleanupMethod": "analysisOnly", "reason": "The item is already in Trash but permanent removal requires a separate decision.",
-    "impact": "No cleanup is performed by this rule; use Finder to review or empty Trash separately.",
+    "impact": "Normal cleanup does not act on this item; the Trash page can permanently remove it only after separate confirmation.",
     "evidence": "Found by the Trash scanner.", "whatItIs": "An item currently present in the current user’s Trash.", "allowSymbolicLinks": false
   },
   {

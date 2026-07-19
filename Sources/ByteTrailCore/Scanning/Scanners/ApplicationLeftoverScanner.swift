@@ -6,6 +6,10 @@ public struct ApplicationLeftoverScanner: ScannerProtocol {
 
     public init() {}
 
+    public func coverageLocations(context: ScanContext) -> [ScanCoverageLocation] {
+        rootSpecifications(homeDirectory: context.homeDirectory).map { coverageLocation($0.root) }
+    }
+
     public func scan(context: ScanContext) -> AsyncStream<ScanEvent> {
         AsyncStream { continuation in
             let producer = Task.detached {
@@ -106,9 +110,9 @@ public struct ApplicationLeftoverScanner: ScannerProtocol {
             approvedRoots: [candidate.path],
             risk: .review,
             regeneratable: false,
-            cleanupMethod: .recoveryVault,
+            cleanupMethod: .moveToTrash,
             reason: "No installed application with this exact Bundle ID was found, but absence is not proof that the data is unused.",
-            impact: "A removed app, background helper, or command-line tool may still rely on this item. ByteTrail keeps it recoverable.",
+            impact: "A removed app, background helper, or command-line tool may still rely on this item. The item stays recoverable in Trash until Trash is explicitly emptied.",
             evidence: "Matched one exact Bundle-ID-shaped top-level item in \(locationName); no installed Bundle ID matched.",
             whatItIs: "A possible application leftover that requires individual review."
         )

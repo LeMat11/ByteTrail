@@ -43,8 +43,10 @@ struct HistoryView: View {
                     }
                     .padding(.vertical, 4)
                 }
+                .scrollContentBackground(.hidden)
             }
         }
+        .detailPaneStyle()
         .navigationTitle(model.t("history.title"))
         .task { await model.refreshPersistence() }
         .confirmationDialog(model.t("history.clearPrompt"), isPresented: $showingClearConfirmation) {

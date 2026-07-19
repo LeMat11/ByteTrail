@@ -5,13 +5,14 @@ import SwiftUI
 
 enum SidebarSection: String, CaseIterable, Identifiable {
     case overview
-    case applications
     case cleanup
+    case applications
+    case largeFiles
     case systemData
     case developerStorage
-    case largeFiles
     case trash
     case history
+    case coverage
     case settings
 
     var id: String { rawValue }
@@ -25,6 +26,7 @@ enum SidebarSection: String, CaseIterable, Identifiable {
         case .developerStorage: return "hammer"
         case .largeFiles: return "doc.text.magnifyingglass"
         case .trash: return "trash"
+        case .coverage: return "list.bullet.clipboard"
         case .history: return "clock.arrow.circlepath"
         case .settings: return "gearshape"
         }
@@ -36,12 +38,19 @@ final class AppViewModel: ObservableObject {
     @Published var selection: SidebarSection? = .overview
     @Published var items: [CleanableItem] = []
     @Published var issues: [ScanIssue] = []
+    @Published var scanCoverage: [ScanCoverageEntry] = []
     @Published var progress = ScanProgress()
     @Published var isScanning = false
     @Published var scanWasCancelled = false
     @Published var lastScanDate: Date?
     @Published var lastCleanupDate: Date?
     @Published var cleanupResults: [CleanupResult] = []
+    @Published private(set) var isCleaning = false
+    @Published private(set) var cleanupTargetCount = 0
+    @Published private(set) var cleanupCancellationRequested = false
+    @Published private(set) var isEmptyingTrash = false
+    @Published var trashEmptyingResult: TrashEmptyingResult?
+    @Published var trashEmptyingError: String?
     @Published var history: [CleanupHistoryEntry] = []
     @Published var recoveryEntries: [RecoveryEntry] = []
     @Published var configurationError: String?
@@ -65,11 +74,15 @@ final class AppViewModel: ObservableObject {
     let exclusionStore: ExclusionStore
     let settingsStore: SettingsStore
     private let ruleEngine: RuleEngine?
+    private let trashEmptyingService: any TrashEmptying
     private let scanCoordinator = ScanCoordinator()
     private var cleanupCoordinator: CleanupCoordinator?
     private var scanTask: Task<Void, Never>?
+    private var cleanupTask: Task<Void, Never>?
+    private var trashEmptyingTask: Task<Void, Never>?
 
-    init() {
+    init(trashEmptyingService: any TrashEmptying = TrashEmptyingService()) {
+        self.trashEmptyingService = trashEmptyingService
         historyStore = CleanupHistoryStore()
         recoveryStore = RecoveryStore()
         exclusionStore = ExclusionStore()
@@ -100,6 +113,8 @@ final class AppViewModel: ObservableObject {
     var selectedBytes: Int64 { selectedItems.reduce(0) { $0 + $1.allocatedSize } }
     var reviewBytes: Int64 { items.reduce(0) { $0 + $1.allocatedSize } }
     var safeBytes: Int64 { safeItems.reduce(0) { $0 + $1.allocatedSize } }
+    var trashItems: [CleanableItem] { items.filter { $0.category == .trash } }
+    var trashBytes: Int64 { trashItems.reduce(0) { $0 + $1.allocatedSize } }
 
     func startScan() {
         guard let ruleEngine, !isScanning else { return }
@@ -108,19 +123,9 @@ final class AppViewModel: ObservableObject {
         scanWasCancelled = false
         items.removeAll()
         issues.removeAll()
+        scanCoverage.removeAll()
         progress = ScanProgress(startedAt: Date())
-        let settings = ScanSettings(
-            enabledScannerIDs: enabledScannerIDs,
-            largeFileMinimumBytes: Int64(largeFileMinimumGB * 1_000_000_000),
-            oldFileAgeDays: oldFileAgeDays,
-            logAgeDays: logAgeDays,
-            authorizedFolders: authorizedFolders,
-            excludedPaths: excludedPaths,
-            excludedSources: excludedSources,
-            showHiddenFiles: showHiddenFiles,
-            dryRun: dryRun,
-            languageIdentifier: language.rawValue
-        )
+        let settings = currentScanSettings()
         let context = ScanContext(ruleEngine: ruleEngine, settings: settings)
         Task { try? await settingsStore.save(settings) }
         scanTask = Task { [weak self] in
@@ -134,6 +139,7 @@ final class AppViewModel: ObservableObject {
                     progress.findings = items.count
                     progress.reclaimableBytes = items.reduce(0) { $0 + $1.allocatedSize }
                 case let .issue(issue): issues.append(issue)
+                case let .coverage(entry): upsertCoverage(entry)
                 case let .progress(next):
                     progress.scannerName = next.scannerName
                     progress.category = next.category
@@ -142,7 +148,12 @@ final class AppViewModel: ObservableObject {
                 case .finished: break
                 }
             }
-            scanWasCancelled = Task.isCancelled
+            scanWasCancelled = scanWasCancelled || Task.isCancelled
+            if scanWasCancelled {
+                for index in scanCoverage.indices where scanCoverage[index].status == .pending {
+                    scanCoverage[index].status = .cancelled
+                }
+            }
             lastScanDate = Date()
             isScanning = false
             scanTask = nil
@@ -151,7 +162,15 @@ final class AppViewModel: ObservableObject {
 
     func cancelScan() {
         scanWasCancelled = true
-        scanTask?.cancel()
+        Task { await scanCoordinator.cancelCurrentScan() }
+    }
+
+    private func upsertCoverage(_ entry: ScanCoverageEntry) {
+        if let index = scanCoverage.firstIndex(where: { $0.id == entry.id }) {
+            scanCoverage[index] = entry
+        } else {
+            scanCoverage.append(entry)
+        }
     }
 
     func setSelected(_ id: UUID, selected: Bool) {
@@ -190,31 +209,69 @@ final class AppViewModel: ObservableObject {
         Task { try? await exclusionStore.exclude(source: source) }
     }
 
-    func cleanSelected() {
-        guard let cleanupCoordinator, !selectedItems.isEmpty else { return }
+    @discardableResult
+    func cleanSelected() -> Bool {
+        guard let cleanupCoordinator, !selectedItems.isEmpty, !isCleaning else { return false }
         let targets = selectedItems
         let useDryRun = dryRun
         refreshRunningApplications()
+        let running = targets.filter(isSourceRunning)
+        let allowed = targets.filter { !isSourceRunning($0) }
+        let skipped = running.map {
+            CleanupResult(
+                itemID: $0.id,
+                status: .skipped,
+                originalURL: $0.provenance.currentURL,
+                resultingURL: nil,
+                bytesProcessed: 0,
+                message: "The source application is running. Quit it and scan again before cleanup."
+            )
+        }
         cleanupResults.removeAll()
-        Task {
-            let running = targets.filter(isSourceRunning)
-            let allowed = targets.filter { !isSourceRunning($0) }
-            let skipped = running.map {
+        cleanupTargetCount = targets.count
+        cleanupCancellationRequested = false
+        isCleaning = true
+        cleanupTask = Task { [weak self] in
+            guard let self else { return }
+            let completed = await cleanupCoordinator.clean(items: allowed, dryRun: useDryRun)
+            let completedIDs = Set(completed.map(\.itemID))
+            let cancelled = allowed.filter { !completedIDs.contains($0.id) }.map {
                 CleanupResult(
                     itemID: $0.id,
                     status: .skipped,
                     originalURL: $0.provenance.currentURL,
                     resultingURL: nil,
                     bytesProcessed: 0,
-                    message: "The source application is running. Quit it and scan again before cleanup."
+                    message: "Cleanup was cancelled before this item was processed."
                 )
             }
-            cleanupResults = skipped + (await cleanupCoordinator.clean(items: allowed, dryRun: useDryRun))
+            cleanupResults = skipped + completed + cancelled
             if cleanupResults.contains(where: { [.movedToRecovery, .movedToTrash].contains($0.status) }) {
                 lastCleanupDate = Date()
             }
+            let movedIDs = Set(cleanupResults.compactMap { result in
+                [.movedToRecovery, .movedToTrash].contains(result.status) ? result.itemID : nil
+            })
+            items.removeAll { movedIDs.contains($0.id) }
+            let targetIDs = Set(targets.map(\.id))
+            for index in items.indices where targetIDs.contains(items[index].id) {
+                items[index].selected = false
+            }
+            isCleaning = false
+            cleanupCancellationRequested = false
+            cleanupTask = nil
             await refreshPersistence()
+            if cleanupResults.contains(where: { $0.status == .movedToTrash }) {
+                await refreshTrashItems()
+            }
         }
+        return true
+    }
+
+    func cancelCleanup() {
+        guard isCleaning, !cleanupCancellationRequested else { return }
+        cleanupCancellationRequested = true
+        cleanupTask?.cancel()
     }
 
     func refreshPersistence() async {
@@ -227,6 +284,39 @@ final class AppViewModel: ObservableObject {
             try? await historyStore.clear()
             await refreshPersistence()
         }
+    }
+
+    @discardableResult
+    func emptyTrash() -> Bool {
+        guard !isEmptyingTrash, !trashItems.isEmpty else { return false }
+        trashEmptyingResult = nil
+        trashEmptyingError = nil
+        isEmptyingTrash = true
+        let service = trashEmptyingService
+        trashEmptyingTask = Task { [weak self] in
+            guard let self else { return }
+            do {
+                let result = try await Task.detached(priority: .userInitiated) {
+                    try service.emptyTrash()
+                }.value
+                trashEmptyingResult = result
+                await refreshTrashItems()
+            } catch {
+                trashEmptyingError = error.localizedDescription
+            }
+            isEmptyingTrash = false
+            trashEmptyingTask = nil
+        }
+        return true
+    }
+
+    func refreshTrash() {
+        guard !isEmptyingTrash else { return }
+        Task { await refreshTrashItems() }
+    }
+
+    func dismissTrashEmptyingResult() {
+        trashEmptyingResult = nil
     }
 
     func reveal(_ item: CleanableItem) {
@@ -301,7 +391,15 @@ final class AppViewModel: ObservableObject {
     }
 
     func persistSettings() {
-        let settings = ScanSettings(
+        let settings = currentScanSettings()
+        Task {
+            try? await settingsStore.save(settings)
+            try? await exclusionStore.replace(paths: excludedPaths, sources: excludedSources)
+        }
+    }
+
+    private func currentScanSettings() -> ScanSettings {
+        ScanSettings(
             enabledScannerIDs: enabledScannerIDs,
             largeFileMinimumBytes: Int64(largeFileMinimumGB * 1_000_000_000),
             oldFileAgeDays: oldFileAgeDays,
@@ -313,10 +411,24 @@ final class AppViewModel: ObservableObject {
             dryRun: dryRun,
             languageIdentifier: language.rawValue
         )
-        Task {
-            try? await settingsStore.save(settings)
-            try? await exclusionStore.replace(paths: excludedPaths, sources: excludedSources)
+    }
+
+    private func refreshTrashItems() async {
+        guard let ruleEngine else { return }
+        let context = ScanContext(ruleEngine: ruleEngine, settings: currentScanSettings())
+        var refreshedItems: [CleanableItem] = []
+        var refreshedIssues: [ScanIssue] = []
+        for await event in TrashScanner().scan(context: context) {
+            switch event {
+            case let .finding(item): refreshedItems.append(item)
+            case let .issue(issue): refreshedIssues.append(issue)
+            default: break
+            }
         }
+        items.removeAll { $0.category == .trash }
+        items.append(contentsOf: refreshedItems)
+        issues.removeAll { $0.scannerIdentifier == "scanner.trash" }
+        issues.append(contentsOf: refreshedIssues)
     }
 
     private func loadPreferences() async {

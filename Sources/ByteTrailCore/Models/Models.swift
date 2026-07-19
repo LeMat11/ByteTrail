@@ -3,8 +3,8 @@ import Foundation
 public enum AppConfiguration {
     public static let productName = "ByteTrail"
     public static let bundleIdentifier = "com.bytetrail.mac"
-    public static let version = "1.2.0"
-    public static let build = "3"
+    public static let version = "1.2.2"
+    public static let build = "6"
     public static let deploymentTarget = "13.0"
     public static let tagline = "Every byte has a source."
 }
@@ -295,6 +295,55 @@ public struct ScanIssue: Identifiable, Codable, Hashable, Sendable {
         self.path = path
         self.message = message
         self.permissionStatus = permissionStatus
+    }
+}
+
+public enum ScanCoverageStatus: String, Codable, CaseIterable, Sendable {
+    case pending
+    case scanned
+    case noFindings
+    case notFound
+    case permissionDenied
+    case partial
+    case disabled
+    case cancelled
+}
+
+public struct ScanCoverageLocation: Identifiable, Codable, Hashable, Sendable {
+    public var scannerIdentifier: String
+    public var scannerName: String
+    public var standardizedPath: String
+
+    public var id: String { "\(scannerIdentifier)::\(standardizedPath)" }
+
+    public init(scannerIdentifier: String, scannerName: String, url: URL) {
+        self.scannerIdentifier = scannerIdentifier
+        self.scannerName = scannerName
+        self.standardizedPath = url.standardizedFileURL.path
+    }
+}
+
+public struct ScanCoverageEntry: Identifiable, Codable, Hashable, Sendable {
+    public var location: ScanCoverageLocation
+    public var status: ScanCoverageStatus
+    public var findingCount: Int
+    public var message: String?
+
+    public var id: String { location.id }
+    public var scannerIdentifier: String { location.scannerIdentifier }
+    public var scannerName: String { location.scannerName }
+    public var standardizedPath: String { location.standardizedPath }
+
+    public init(
+        location: ScanCoverageLocation,
+        status: ScanCoverageStatus,
+        findingCount: Int = 0,
+        message: String? = nil
+    ) {
+        self.location = location
+        self.status = status
+        self.findingCount = findingCount
+        self.message = message
     }
 }
 

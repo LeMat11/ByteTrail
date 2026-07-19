@@ -103,6 +103,8 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
+        .detailPaneStyle()
         .padding(.horizontal, 4)
         .navigationTitle(model.t("section.settings"))
         .onDisappear { model.persistSettings() }

@@ -14,7 +14,7 @@ Bundled rules are limited to these explicit roots:
 
 - `~/Library/Caches`
 - `~/Library/Logs`
-- `~/.Trash` (analysis only)
+- `~/.Trash` (read-only analysis during scans; permanent clearing only after a separate explicit confirmation)
 - `~/Library/Developer/Xcode/DerivedData`
 - `~/Library/Developer/Xcode/Archives`
 - `~/Library/Developer/Xcode/iOS DeviceSupport`
@@ -50,7 +50,7 @@ This reduces, but cannot mathematically eliminate, all time-of-check/time-of-use
 
 ## Recovery
 
-Normal Release behavior prefers the supported macOS Trash API. When Trash is unavailable, ordinary eligible items move to an app-managed Recovery Vault and durably record their original path. Application bundles fail closed instead of falling back to the vault because restoring into a protected Applications root is intentionally forbidden. If the recovery index cannot be saved, ByteTrail attempts to roll the move back. Restore never overwrites an existing destination. Permanent deletion is not implemented.
+Normal Release cleanup uses the supported macOS Trash API. If Trash is unavailable, the item stays in its original location and the operation fails closed. The separate Clear Trash action validates the exact current-user `~/.Trash` root, requests an additional destructive confirmation in the UI, removes only its immediate children, continues past per-item failures, and reports the measured allocated bytes successfully removed. It is never triggered by scanning, normal cleanup, app launch, background work, or command-line build/test. Legacy Recovery Vault entries remain restorable and restore never overwrites an existing destination.
 
 ## User cleanup flow
 
@@ -60,4 +60,4 @@ When an application bundle and one of its descendant findings are both considere
 
 ## Development-machine lock
 
-Debug builds default to dry-run and enforce a second, non-configurable mutation boundary in the core cleanup layer: only a child of the standardized system temporary directory may be moved or modified. Debug Trash movement is disabled because it would cross into the real user Trash. Automated destructive-operation checks use a newly created UUID fixture directory, print its path, verify temporary-root containment, and populate it only with synthetic data.
+Debug builds default to dry-run and enforce a second, non-configurable mutation boundary in the core cleanup layer: only a child of the standardized system temporary directory may be moved, modified, or permanently removed. Debug Trash movement and real Trash clearing are disabled because they would cross into the user's real Trash. Automated destructive-operation checks use a newly created UUID fixture directory, print its path, verify temporary-root containment, and populate it only with synthetic data.

@@ -5,6 +5,10 @@ public struct TrashScanner: ScannerProtocol {
     public let displayName = "Trash"
     public init() {}
 
+    public func coverageLocations(context: ScanContext) -> [ScanCoverageLocation] {
+        [coverageLocation(context.homeDirectory.appendingPathComponent(".Trash", isDirectory: true))]
+    }
+
     public func scan(context: ScanContext) -> AsyncStream<ScanEvent> {
         AsyncStream { continuation in
             let producer = Task.detached {
@@ -13,7 +17,8 @@ public struct TrashScanner: ScannerProtocol {
                 }
                 guard FileManager.default.fileExists(atPath: root.path) else { continuation.yield(.finished(scannerIdentifier: identifier)); continuation.finish(); return }
                 do {
-                    for (index, child) in try ScannerSupport.children(of: root, showHidden: context.settings.showHiddenFiles).enumerated() {
+                    // Empty Trash affects hidden entries too, so the review page must not hide them.
+                    for (index, child) in try ScannerSupport.children(of: root, showHidden: true).enumerated() {
                         if Task.isCancelled { break }
                         continuation.yield(.progress(ScanProgress(scannerName: displayName, category: rule.category.label, currentPath: child.path, filesInspected: index, findings: index)))
                         do {

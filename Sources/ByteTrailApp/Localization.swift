@@ -40,8 +40,7 @@ enum L10n {
     static func string(_ key: String, language: AppLanguage, arguments: [CVarArg] = []) -> String {
         let bundle: Bundle
         if let code = language.localizationCode,
-           let path = resourceBundle.path(forResource: code, ofType: "lproj"),
-           let localizedBundle = Bundle(path: path) {
+           let localizedBundle = localizedBundle(for: code) {
             bundle = localizedBundle
         } else {
             bundle = resourceBundle
@@ -49,6 +48,19 @@ enum L10n {
         let format = bundle.localizedString(forKey: key, value: key, table: nil)
         guard !arguments.isEmpty else { return format }
         return String(format: format, locale: language.locale, arguments: arguments)
+    }
+
+    private static func localizedBundle(for requestedCode: String) -> Bundle? {
+        // SwiftPM normalizes `zh-Hans.lproj` to `zh-hans.lproj` in Release resource
+        // bundles. Xcode preserves the source spelling in Debug builds. Resolve the
+        // localization advertised by the bundle so both layouts work on every volume.
+        let resolvedCode = resourceBundle.localizations.first {
+            $0.caseInsensitiveCompare(requestedCode) == .orderedSame
+        } ?? requestedCode
+        guard let path = resourceBundle.path(forResource: resolvedCode, ofType: "lproj") else {
+            return nil
+        }
+        return Bundle(path: path)
     }
 }
 
@@ -62,6 +74,7 @@ extension AppViewModel {
     func cleanupMethodLabel(_ method: CleanupMethod) -> String { t("cleanup.method.\(method.rawValue)") }
     func categoryLabel(_ category: ScanCategory) -> String { t("category.\(category.rawValue)") }
     func cleanupStatusLabel(_ status: CleanupResultStatus) -> String { t("cleanup.status.\(status.rawValue)") }
+    func coverageStatusLabel(_ status: ScanCoverageStatus) -> String { t("coverage.status.\(status.rawValue)") }
 
     func scannerName(_ value: String) -> String {
         let keys = [
@@ -127,6 +140,7 @@ extension AppViewModel {
             "The authorized scan location is unavailable.": "message.locationUnavailable",
             "The result limit was reached. Increase the size threshold or narrow the scan locations.": "message.resultLimit",
             "The source application is running. Quit it and scan again before cleanup.": "message.applicationRunning",
+            "Cleanup was cancelled before this item was processed.": "message.cleanupCancelled",
             "The cache rule is unavailable.": "message.cacheRuleUnavailable",
             "The large-file rule is unavailable.": "message.largeFileRuleUnavailable",
             "The log rules are unavailable.": "message.logRulesUnavailable",
@@ -144,6 +158,8 @@ extension AppViewModel {
             "The item is not writable with current permissions.": "message.permissionDenied",
             "Debug cleanup is restricted to a validated temporary fixture directory.": "message.developmentLock",
             "Moving to Trash is unavailable in this build or environment.": "message.trashUnavailable",
+            "The Trash location failed the safety check.": "message.invalidTrashRoot",
+            "The Trash folder is unavailable or is not a directory.": "message.trashFolderUnavailable",
             "A file already exists at the restore destination.": "message.destinationExists",
             "The Recovery Vault destination is invalid.": "message.invalidRecovery",
             "The Recovery Vault item no longer exists.": "message.recoveryMissing"

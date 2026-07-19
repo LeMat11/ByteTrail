@@ -333,7 +333,7 @@ private struct ByteTrailVerification {
                 try require(FileManager.default.fileExists(atPath: file.path), "Restored fixture missing")
             }
 
-            try await run("embedded dynamic cleanup rules remain temporary-only") {
+            try await run("embedded move-to-Trash rules fail closed in Debug") {
                 let fixture = try Fixture()
                 let approved = try fixture.directory("authorized")
                 let file = try fixture.file("authorized/large.bin", bytes: 256)
@@ -348,9 +348,25 @@ private struct ByteTrailVerification {
                     vaultOperation: RecoveryVaultOperation(vaultRoot: fixture.root.appendingPathComponent("vault"))
                 )
                 let results = await coordinator.clean(items: [finding], dryRun: false)
-                try require(results.first?.status == .movedToRecovery, "Embedded dynamic rule was not honored")
-                guard let recovery = await recoveryStore.allEntries().first else { throw VerificationFailure.failed("Dynamic recovery index missing") }
-                try require(PathContainmentValidator().isContained(recovery.recoveryURL, in: fixture.root), "Dynamic cleanup left the fixture root")
+                try require(results.first?.status == .failed, "Debug move-to-Trash did not fail closed")
+                try require(FileManager.default.fileExists(atPath: file.path), "Debug move-to-Trash changed its fixture")
+                let recoveryEntries = await recoveryStore.allEntries()
+                try require(recoveryEntries.isEmpty, "Debug move-to-Trash unexpectedly used Recovery Vault")
+            }
+
+            try await run("Trash emptying is confined to a synthetic temporary root") {
+                let fixture = try Fixture()
+                let temporary = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true).standardizedFileURL
+                let trashRoot = try fixture.directory("SyntheticTrash-\(UUID().uuidString)")
+                print("TRASH FIXTURE \(trashRoot.standardizedFileURL.path)")
+                try require(PathContainmentValidator().isContained(trashRoot, in: temporary, allowRootItself: false), "Trash fixture escaped the system temporary directory")
+                _ = try fixture.file("\(trashRoot.lastPathComponent)/first.bin", bytes: 4_096)
+                _ = try fixture.file("\(trashRoot.lastPathComponent)/folder/second.bin", bytes: 8_192)
+                let outside = try fixture.file("must-remain.bin", bytes: 128)
+                let result = try TrashEmptyingService(trashRoot: trashRoot, homeDirectory: fixture.root).emptyTrash()
+                try require(result.removedItemCount == 2 && result.failures.isEmpty, "Synthetic Trash was not emptied as expected")
+                try require(FileManager.default.fileExists(atPath: trashRoot.path), "Synthetic Trash root was removed")
+                try require(FileManager.default.fileExists(atPath: outside.path), "Trash emptying touched a file outside its root")
             }
 
             try await run("restore collision does not overwrite") {
@@ -396,7 +412,7 @@ private struct ByteTrailVerification {
                 #endif
             }
 
-            print("VERIFICATION COMPLETE: 20 checks passed; all mutation fixtures were synthetic and under the system temporary directory.")
+            print("VERIFICATION COMPLETE: 21 checks passed; all mutation fixtures were synthetic and under the system temporary directory.")
         } catch {
             fputs("VERIFICATION FAILED: \(error.localizedDescription)\n", stderr)
             exit(1)

@@ -6,6 +6,12 @@ public struct ApplicationScanner: ScannerProtocol {
 
     public init() {}
 
+    public func coverageLocations(context: ScanContext) -> [ScanCoverageLocation] {
+        let pathPolicy = ApplicationPathPolicy(homeDirectory: context.homeDirectory)
+        let cacheRoot = context.homeDirectory.appendingPathComponent("Library/Caches", isDirectory: true)
+        return (pathPolicy.inventoryRoots + [cacheRoot]).map(coverageLocation)
+    }
+
     public func scan(context: ScanContext) -> AsyncStream<ScanEvent> {
         AsyncStream { continuation in
             let producer = Task.detached {

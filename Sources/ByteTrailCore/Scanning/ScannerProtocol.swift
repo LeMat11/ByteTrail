@@ -33,13 +33,23 @@ public enum ScanEvent: Sendable {
     case progress(ScanProgress)
     case finding(CleanableItem)
     case issue(ScanIssue)
+    case coverage(ScanCoverageEntry)
     case finished(scannerIdentifier: String)
 }
 
 public protocol ScannerProtocol: Sendable {
     var identifier: String { get }
     var displayName: String { get }
+    func coverageLocations(context: ScanContext) -> [ScanCoverageLocation]
     func scan(context: ScanContext) -> AsyncStream<ScanEvent>
+}
+
+public extension ScannerProtocol {
+    func coverageLocations(context: ScanContext) -> [ScanCoverageLocation] { [] }
+
+    func coverageLocation(_ url: URL) -> ScanCoverageLocation {
+        ScanCoverageLocation(scannerIdentifier: identifier, scannerName: displayName, url: url)
+    }
 }
 
 public enum ScannerSupport {
@@ -74,7 +84,7 @@ public enum ScannerSupport {
 
     public static func issue(scanner: String, root: URL, error: Error) -> ScanIssue {
         let nsError = error as NSError
-        let permission = nsError.domain == NSCocoaErrorDomain && [NSFileReadNoPermissionError, NSFileReadNoSuchFileError].contains(nsError.code)
+        let permission = nsError.domain == NSCocoaErrorDomain && nsError.code == NSFileReadNoPermissionError
             ? PermissionStatus.denied : PermissionStatus.unavailable
         return ScanIssue(scannerIdentifier: scanner, path: root.path, message: error.localizedDescription, permissionStatus: permission)
     }

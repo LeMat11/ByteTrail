@@ -8,6 +8,25 @@ private struct FixtureEventScanner: ScannerProtocol {
     let items: [CleanableItem]
     let issue: ScanIssue?
     let delayNanoseconds: UInt64
+    let locations: [URL]
+
+    init(
+        identifier: String,
+        items: [CleanableItem],
+        issue: ScanIssue?,
+        delayNanoseconds: UInt64,
+        locations: [URL] = []
+    ) {
+        self.identifier = identifier
+        self.items = items
+        self.issue = issue
+        self.delayNanoseconds = delayNanoseconds
+        self.locations = locations
+    }
+
+    func coverageLocations(context: ScanContext) -> [ScanCoverageLocation] {
+        locations.map(coverageLocation)
+    }
 
     func scan(context: ScanContext) -> AsyncStream<ScanEvent> {
         AsyncStream { continuation in
@@ -18,6 +37,40 @@ private struct FixtureEventScanner: ScannerProtocol {
                     if delayNanoseconds > 0 { try? await Task.sleep(nanoseconds: delayNanoseconds) }
                 }
                 if let issue { continuation.yield(.issue(issue)) }
+                continuation.yield(.finished(scannerIdentifier: identifier))
+                continuation.finish()
+            }
+            continuation.onTermination = { _ in producer.cancel() }
+        }
+    }
+}
+
+private actor ScanInvocationCounter {
+    private(set) var count = 0
+
+    func increment() { count += 1 }
+}
+
+private actor CoverageEntryCollector {
+    private(set) var entries: [ScanCoverageEntry] = []
+
+    func append(_ entry: ScanCoverageEntry) { entries.append(entry) }
+}
+
+private struct CountingCoverageScanner: ScannerProtocol {
+    let identifier: String
+    let displayName = "Counting Fixture Scanner"
+    let location: URL
+    let counter: ScanInvocationCounter
+
+    func coverageLocations(context: ScanContext) -> [ScanCoverageLocation] {
+        [coverageLocation(location)]
+    }
+
+    func scan(context: ScanContext) -> AsyncStream<ScanEvent> {
+        AsyncStream { continuation in
+            let producer = Task {
+                await counter.increment()
                 continuation.yield(.finished(scannerIdentifier: identifier))
                 continuation.finish()
             }
@@ -166,7 +219,7 @@ final class ScannerTests: XCTestCase {
         XCTAssertFalse(identifiers.contains("com.example.nested"))
         XCTAssertFalse(identifiers.contains("com.example.link"))
         XCTAssertTrue(findings.allSatisfy { $0.riskLevel == .review && !$0.selected })
-        XCTAssertTrue(findings.allSatisfy { $0.cleanupMethod == .recoveryVault })
+        XCTAssertTrue(findings.allSatisfy { $0.cleanupMethod == .moveToTrash })
     }
 
     func testBundleIdentifierPolicyRejectsAmbiguousDirectoryNames() {
@@ -314,6 +367,152 @@ final class ScannerTests: XCTestCase {
             if case let .finding(value) = event { findings.append(value) }
         }
         XCTAssertEqual(findings.count, 1)
+    }
+
+    func testCoverageTransitionsFromPendingToScannedWithFindings() async throws {
+        let fixture = try TemporaryFixture()
+        let root = try fixture.directory("coverage")
+        let rule = fixtureRule(root: root)
+        let item = try await fixtureItem(url: try fixture.file("coverage/finding"), root: root, rule: rule)
+        let scanner = FixtureEventScanner(
+            identifier: "coverage.findings",
+            items: [item],
+            issue: nil,
+            delayNanoseconds: 0,
+            locations: [root]
+        )
+        let context = ScanContext(
+            ruleEngine: try RuleEngine(rules: [rule]),
+            settings: ScanSettings(),
+            homeDirectory: fixture.root
+        )
+        var entries: [ScanCoverageEntry] = []
+
+        for await event in await ScanCoordinator(scanners: [scanner]).scan(context: context) {
+            if case let .coverage(entry) = event { entries.append(entry) }
+        }
+
+        XCTAssertEqual(entries.first?.status, .pending)
+        XCTAssertEqual(entries.last?.status, .scanned)
+        XCTAssertEqual(entries.last?.findingCount, 1)
+    }
+
+    func testCoverageDistinguishesNoFindingsMissingPermissionAndPartial() async throws {
+        let fixture = try TemporaryFixture()
+        let noFindingsRoot = try fixture.directory("no-findings")
+        let deniedRoot = try fixture.directory("denied")
+        let partialRoot = try fixture.directory("partial")
+        let missingRoot = fixture.root.appendingPathComponent("missing", isDirectory: true)
+        let rule = fixtureRule(root: partialRoot)
+        let item = try await fixtureItem(url: try fixture.file("partial/finding"), root: partialRoot, rule: rule)
+        let scanners: [any ScannerProtocol] = [
+            FixtureEventScanner(identifier: "coverage.empty", items: [], issue: nil, delayNanoseconds: 0, locations: [noFindingsRoot]),
+            FixtureEventScanner(identifier: "coverage.missing", items: [], issue: nil, delayNanoseconds: 0, locations: [missingRoot]),
+            FixtureEventScanner(
+                identifier: "coverage.denied",
+                items: [],
+                issue: ScanIssue(scannerIdentifier: "coverage.denied", path: deniedRoot.path, message: "Denied", permissionStatus: .denied),
+                delayNanoseconds: 0,
+                locations: [deniedRoot]
+            ),
+            FixtureEventScanner(
+                identifier: "coverage.partial",
+                items: [item],
+                issue: ScanIssue(scannerIdentifier: "coverage.partial", path: partialRoot.path, message: "Unavailable child", permissionStatus: .unavailable),
+                delayNanoseconds: 0,
+                locations: [partialRoot]
+            )
+        ]
+        let context = ScanContext(
+            ruleEngine: try RuleEngine(rules: [rule]),
+            settings: ScanSettings(),
+            homeDirectory: fixture.root
+        )
+        var terminalByScanner: [String: ScanCoverageEntry] = [:]
+
+        for await event in await ScanCoordinator(scanners: scanners).scan(context: context) {
+            if case let .coverage(entry) = event, entry.status != .pending {
+                terminalByScanner[entry.scannerIdentifier] = entry
+            }
+        }
+
+        XCTAssertEqual(terminalByScanner["coverage.empty"]?.status, .noFindings)
+        XCTAssertEqual(terminalByScanner["coverage.missing"]?.status, .notFound)
+        XCTAssertEqual(terminalByScanner["coverage.denied"]?.status, .permissionDenied)
+        XCTAssertEqual(terminalByScanner["coverage.partial"]?.status, .partial)
+        XCTAssertEqual(terminalByScanner["coverage.partial"]?.findingCount, 1)
+    }
+
+    func testDisabledCoverageScannerIsReportedWithoutBeingInvoked() async throws {
+        let fixture = try TemporaryFixture()
+        let disabledRoot = try fixture.directory("disabled")
+        let counter = ScanInvocationCounter()
+        let scanner = CountingCoverageScanner(identifier: "coverage.disabled", location: disabledRoot, counter: counter)
+        let context = ScanContext(
+            ruleEngine: try RuleEngine(rules: []),
+            settings: ScanSettings(enabledScannerIDs: ["some-other-scanner"]),
+            homeDirectory: fixture.root
+        )
+        var entries: [ScanCoverageEntry] = []
+
+        for await event in await ScanCoordinator(scanners: [scanner]).scan(context: context) {
+            if case let .coverage(entry) = event { entries.append(entry) }
+        }
+
+        let invocationCount = await counter.count
+        XCTAssertEqual(entries.map(\.status), [.disabled])
+        XCTAssertEqual(invocationCount, 0)
+    }
+
+    func testCoverageStableIDIncludesScannerIdentifier() {
+        let path = URL(fileURLWithPath: "/private/tmp/ByteTrailSyntheticCoverage", isDirectory: true)
+        let first = ScanCoverageLocation(scannerIdentifier: "one", scannerName: "One", url: path)
+        let second = ScanCoverageLocation(scannerIdentifier: "two", scannerName: "Two", url: path)
+
+        XCTAssertNotEqual(first.id, second.id)
+    }
+
+    func testCoverageCancellationFinalizesUnfinishedLocation() async throws {
+        let fixture = try TemporaryFixture()
+        let root = try fixture.directory("cancelled-coverage")
+        let rule = fixtureRule(root: root)
+        var items: [CleanableItem] = []
+        for index in 0..<20 {
+            items.append(try await fixtureItem(
+                url: try fixture.file("cancelled-coverage/\(index)"),
+                root: root,
+                rule: rule
+            ))
+        }
+        let scanner = FixtureEventScanner(
+            identifier: "coverage.cancelled",
+            items: items,
+            issue: nil,
+            delayNanoseconds: 25_000_000,
+            locations: [root]
+        )
+        let coordinator = ScanCoordinator(scanners: [scanner])
+        let context = ScanContext(
+            ruleEngine: try RuleEngine(rules: [rule]),
+            settings: ScanSettings(),
+            homeDirectory: fixture.root
+        )
+        let collector = CoverageEntryCollector()
+        let stream = await coordinator.scan(context: context)
+        let consumer = Task {
+            for await event in stream {
+                if case let .coverage(entry) = event { await collector.append(entry) }
+            }
+        }
+
+        try await Task.sleep(nanoseconds: 60_000_000)
+        await coordinator.cancelCurrentScan()
+        await consumer.value
+        let entries = await collector.entries
+
+        XCTAssertEqual(entries.first?.status, .pending)
+        XCTAssertEqual(entries.last?.status, .cancelled)
+        XCTAssertLessThan(entries.last?.findingCount ?? items.count, items.count)
     }
 
     func testCancellationKeepsPartialResults() async throws {

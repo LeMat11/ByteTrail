@@ -5,6 +5,7 @@ project_root="${0:A:h:h}"
 arm_binary="$project_root/.build/bytetrail-release-arm64/arm64-apple-macosx/release/ByteTrail"
 x86_binary="$project_root/.build/bytetrail-release-x86_64/x86_64-apple-macosx/release/ByteTrail"
 app_resource_bundle="$project_root/.build/bytetrail-release-arm64/arm64-apple-macosx/release/ByteTrail_ByteTrailApp.bundle"
+core_resource_bundle="$project_root/.build/bytetrail-release-arm64/arm64-apple-macosx/release/ByteTrail_ByteTrailCore.bundle"
 app_iconset="$project_root/Sources/ByteTrailApp/Resources/Assets.xcassets/AppIcon.appiconset"
 app_output="$project_root/outputs/ByteTrail.app"
 dmg_output="$project_root/outputs/ByteTrail.dmg"
@@ -16,6 +17,11 @@ fi
 
 if [[ ! -d "$app_resource_bundle" ]]; then
   print -u2 "The ByteTrail localization resource bundle is required."
+  exit 1
+fi
+
+if [[ ! -d "$core_resource_bundle" ]]; then
+  print -u2 "The ByteTrail core rules resource bundle is required."
   exit 1
 fi
 
@@ -59,6 +65,12 @@ cp "$project_root/PRIVACY.md" "$staged_app/Contents/Resources/PRIVACY.md"
 cp "$project_root/SAFETY_MODEL.md" "$staged_app/Contents/Resources/SAFETY_MODEL.md"
 cp "$project_root/Configuration/PkgInfo" "$staged_app/Contents/PkgInfo"
 ditto "$app_resource_bundle" "$staged_app/Contents/Resources/ByteTrail_ByteTrailApp.bundle"
+ditto "$core_resource_bundle" "$staged_app/Contents/Resources/ByteTrail_ByteTrailCore.bundle"
+
+if [[ ! -f "$staged_app/Contents/Resources/ByteTrail_ByteTrailCore.bundle/CleanupRules.json" ]]; then
+  print -u2 "The packaged core rules bundle is incomplete."
+  exit 1
+fi
 
 plutil -lint "$staged_app/Contents/Info.plist"
 codesign --force --deep --options runtime --timestamp=none --sign - "$staged_app"

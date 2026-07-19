@@ -5,6 +5,10 @@ public struct InstallerScanner: ScannerProtocol {
     public let displayName = "Downloaded Installers"
     public init() {}
 
+    public func coverageLocations(context: ScanContext) -> [ScanCoverageLocation] {
+        [coverageLocation(context.homeDirectory.appendingPathComponent("Downloads", isDirectory: true))]
+    }
+
     public func scan(context: ScanContext) -> AsyncStream<ScanEvent> {
         AsyncStream { continuation in
             let producer = Task.detached {

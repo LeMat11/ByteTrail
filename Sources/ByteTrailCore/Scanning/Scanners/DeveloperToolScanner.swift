@@ -6,6 +6,12 @@ public struct DeveloperToolScanner: ScannerProtocol {
     private let ruleIDs = ["homebrew.download-cache", "npm.cache", "yarn.cache", "pnpm.store", "pip.cache", "conda.package-cache"]
     public init() {}
 
+    public func coverageLocations(context: ScanContext) -> [ScanCoverageLocation] {
+        ruleIDs.compactMap { ruleID in
+            context.ruleEngine.rule(identifier: ruleID)?.expandedRoots(homeDirectory: context.homeDirectory).first
+        }.map(coverageLocation)
+    }
+
     public func scan(context: ScanContext) -> AsyncStream<ScanEvent> {
         AsyncStream { continuation in
             let producer = Task.detached {

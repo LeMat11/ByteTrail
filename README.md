@@ -8,7 +8,7 @@ ByteTrail is a local-first macOS storage inspector and cleanup app. It helps exp
 - Apple Silicon and Intel Macs (Universal 2)
 - English and Simplified Chinese
 
-> ByteTrail 1.2 is ad-hoc signed and is not yet notarized by Apple. macOS may block the first launch even when the download is intact. Follow the verified first-launch steps below; do not disable Gatekeeper globally.
+> ByteTrail 1.2.2 is ad-hoc signed and is not yet notarized by Apple. macOS may block the first launch even when the download is intact. Follow the verified first-launch steps below; do not disable Gatekeeper globally.
 
 ## Download and verify
 
@@ -21,13 +21,7 @@ cd ~/Downloads
 shasum -a 256 -c SHA256.txt
 ```
 
-The expected SHA-256 for ByteTrail 1.2.0 is:
-
-```text
-4c8846fff195e6b29cbe01ab6e5b1f2071b56dfb3b3ecf3bfe3c6f2a8e57044e  ByteTrail.dmg
-```
-
-Continue only if the result says `ByteTrail.dmg: OK`. A mismatch means the download is incomplete or different from the published release.
+The expected SHA-256 for ByteTrail 1.2.2 is published in `SHA256.txt` and in the corresponding GitHub Release description. Continue only if the result says `ByteTrail.dmg: OK`. A mismatch means the download is incomplete or different from the published release.
 
 ## Install
 
@@ -57,13 +51,15 @@ Apple's current guidance: [Open a Mac app from an unknown developer](https://sup
 ## Use ByteTrail
 
 1. Start a scan. ByteTrail analyzes supported locations locally and shows findings without changing them.
-2. Review the source, path, size, confidence, risk, and cleanup explanation for each finding.
-3. Select only the items you recognize and want to act on.
-4. Choose **Clean Up Selected**.
+2. Open **Scan Coverage** to distinguish locations scanned with no findings from missing, disabled, partially scanned, or permission-blocked locations.
+3. Review the source, path, size, confidence, risk, and cleanup explanation for each finding.
+4. Select only the items you recognize and want to act on.
+5. Choose **Clean Up Selected**.
+6. Review moved items in **Trash**. Only the separate **Clear Trash** action permanently removes Trash contents.
 
 Cleanup always has these two visible stages: **Review**, then **Clean Up**. There is no automatic cleanup, background cleanup, or command-line cleanup trigger.
 
-ByteTrail 1.2 can identify:
+ByteTrail 1.2.2 can identify:
 
 - Installed applications and their application-bundle sizes
 - Exact `~/Library/Caches/<Bundle ID>` matches for installed apps
@@ -76,13 +72,16 @@ Possible leftovers are suggestions, not proof that a file is unused. They are al
 
 ## What cleanup means
 
-The downloadable Release build can perform real cleanup after you explicitly select an eligible item. It does not permanently erase files:
+The downloadable Release build separates reversible cleanup from permanent removal:
 
-- Eligible items normally move to the macOS Trash.
-- Some ordinary items may move to ByteTrail's recoverable vault when Trash is unavailable.
+- **Clean Up Selected** only moves eligible items to the macOS Trash. If macOS cannot move an item to Trash, ByteTrail leaves it in place and reports the failure.
+- Moved items appear in ByteTrail's **Trash** page and remain recoverable through Finder.
+- **Clear Trash** is a separate destructive action with its own confirmation. It permanently removes every item currently in the user's Trash, like Finder's **Empty Trash**, and then shows the measured space reclaimed.
 - Application bundles fail safely if they cannot be moved to Trash.
 - System applications, ByteTrail itself, running applications, protected personal data, links that escape an approved path, and changed or invalid targets are blocked.
-- ByteTrail never empties Trash automatically. Disk space used by an item in Trash is released only after you empty Trash yourself.
+- ByteTrail never clears Trash automatically, in the background, from a scan, or from a command-line build/test.
+
+During cleanup, the result window displays an active progress state. **Stop After Current Item** prevents later selected items from starting; an in-progress macOS file move is allowed to finish so ByteTrail never leaves a half-moved item.
 
 The Xcode Debug build is intentionally different: dry-run is enabled by default, and its development safety lock prevents modification of real user paths.
 
@@ -99,7 +98,7 @@ See [PRIVACY.md](PRIVACY.md), [SAFETY_MODEL.md](SAFETY_MODEL.md), and [KNOWN_LIM
 ## Recovery and support
 
 - Items moved to Trash can be restored through Finder before Trash is emptied.
-- Vault-backed operations are recorded locally and can be restored without overwriting an existing destination.
+- Existing legacy Recovery Vault entries, if any, remain locally restorable without overwriting an existing destination.
 - When reporting a problem, include the ByteTrail version, macOS version, exact warning text, and whether the SHA-256 verification passed. Do not publish private file paths or personal scan results in a public issue.
 
 Development and build instructions are in [DEVELOPMENT.md](DEVELOPMENT.md). Release verification details are in [outputs/BUILD_NOTES.md](outputs/BUILD_NOTES.md).
@@ -119,7 +118,7 @@ ByteTrail 是一款完全本地运行的 macOS 磁盘空间分析与清理工具
 
 ### macOS 阻止首次打开时
 
-ByteTrail 1.2 尚未取得 Apple Developer ID 签名和公证，因此 macOS 可能阻止第一次启动。请先确认安装包来自本项目官方 GitHub Release，并且 SHA-256 校验一致，然后：
+ByteTrail 1.2.2 尚未取得 Apple Developer ID 签名和公证，因此 macOS 可能阻止第一次启动。请先确认安装包来自本项目官方 GitHub Release，并且 SHA-256 校验一致，然后：
 
 1. 尝试打开 ByteTrail 一次并关闭系统警告。
 2. 打开 **苹果菜单 → 系统设置 → 隐私与安全性**。
@@ -133,11 +132,16 @@ ByteTrail 1.2 尚未取得 Apple Developer ID 签名和公证，因此 macOS 可
 ### 扫描与清理
 
 1. 启动扫描；扫描只读取和分析，不会自动修改文件。
-2. 查看每个结果的来源、路径、大小、可信度、风险和清理说明。
-3. 只勾选你确认需要处理的项目。
-4. 点击 **Clean Up Selected / 清理已选项目**。
+2. 打开“扫描覆盖”，区分“已扫描但无结果”、目录不存在、未启用、部分扫描和权限不足。
+3. 查看每个结果的来源、路径、大小、可信度、风险和清理说明。
+4. 只勾选你确认需要处理的项目。
+5. 点击 **Clean Up Selected / 清理已选项目**。
 
-Release 版能够执行真实清理，但不会永久删除文件。符合条件的项目通常会移入废纸篓，部分普通项目可能进入 ByteTrail 的可恢复保险库。ByteTrail 不会自动清空废纸篓；需要你自行清空废纸篓后，相应空间才会真正释放。
+Release 版把“可恢复清理”和“永久删除”明确分开：**清理已选项目**只会把符合条件的项目移入 macOS 废纸篓；如果系统无法完成移动，ByteTrail 会保持原文件不动并报告失败。移动后的项目会显示在 ByteTrail 的“废纸篓”子页面，也可以先通过访达恢复。
+
+只有在“废纸篓”页面单独点击 **清空废纸篓**，并再次确认后，ByteTrail 才会像访达的“清倒废纸篓”一样永久移除当前用户废纸篓内的全部内容，并用完成动画显示本次实际处理的空间。ByteTrail 不会在扫描、普通清理、后台或命令行构建/测试中自动清空废纸篓。
+
+清理期间结果窗口会显示明确的运行状态。“完成当前项目后停止”会阻止后续项目开始处理；已经开始的 macOS 文件移动会先安全完成，避免留下只移动了一部分的数据。
 
 系统应用、ByteTrail 自身、正在运行的应用、受保护的个人数据、路径校验失败或扫描后发生变化的目标都会被拒绝处理。卸载残留只是保守建议，始终需要人工 Review，不会自动勾选。
 

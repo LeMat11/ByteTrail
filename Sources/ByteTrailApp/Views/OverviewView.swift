@@ -21,6 +21,7 @@ struct OverviewView: View {
             }
             .padding(20)
         }
+        .detailPaneStyle()
         .navigationTitle(model.t("section.overview"))
     }
 
@@ -78,7 +79,7 @@ struct OverviewView: View {
             categoryLine("section.trash", categories: [.trash], symbol: "trash")
             categoryLine("overview.largeFilesReview", categories: [.largeFile], symbol: "doc.text.magnifyingglass")
         }
-        .padding(18).background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 14))
+        .padding(18).background(DetailTheme.panelBackground, in: RoundedRectangle(cornerRadius: 14))
     }
 
     private var summaryHeading: some View {
@@ -114,7 +115,7 @@ struct OverviewView: View {
         } icon: {
             Image(systemName: "hand.raised.fill").foregroundStyle(.blue)
         }
-        .padding(16).background(.blue.opacity(0.07), in: RoundedRectangle(cornerRadius: 12))
+        .padding(16).background(DetailTheme.panelBackground, in: RoundedRectangle(cornerRadius: 12))
     }
 
     private var issueSummary: some View {
@@ -161,7 +162,7 @@ struct ScanProgressView: View {
                 Text(verbatim: path).font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
             }
         }
-        .padding(16).background(.quaternary.opacity(0.35), in: RoundedRectangle(cornerRadius: 12))
+        .padding(16).background(DetailTheme.panelBackground, in: RoundedRectangle(cornerRadius: 12))
         .onReceive(timer) { now = $0 }
     }
 

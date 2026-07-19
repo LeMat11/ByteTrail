@@ -5,6 +5,10 @@ public struct IOSBackupScanner: ScannerProtocol {
     public let displayName = "iPhone & iPad Backups"
     public init() {}
 
+    public func coverageLocations(context: ScanContext) -> [ScanCoverageLocation] {
+        [coverageLocation(context.homeDirectory.appendingPathComponent("Library/Application Support/MobileSync/Backup", isDirectory: true))]
+    }
+
     public func scan(context: ScanContext) -> AsyncStream<ScanEvent> {
         AsyncStream { continuation in
             let producer = Task.detached {
