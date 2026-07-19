@@ -4,6 +4,7 @@ public struct ScanContext: Sendable {
     public var ruleEngine: RuleEngine
     public var settings: ScanSettings
     public var homeDirectory: URL
+    public var applicationResolver: ApplicationMetadataResolver
     public var sourceResolver: SourceResolver
     public var fileSystemValidator: FileSystemValidator
     public var fileSizeCalculator: FileSizeCalculator
@@ -12,6 +13,7 @@ public struct ScanContext: Sendable {
         ruleEngine: RuleEngine,
         settings: ScanSettings,
         homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser,
+        applicationResolver: ApplicationMetadataResolver? = nil,
         sourceResolver: SourceResolver? = nil,
         fileSystemValidator: FileSystemValidator? = nil,
         fileSizeCalculator: FileSizeCalculator = FileSizeCalculator()
@@ -19,7 +21,9 @@ public struct ScanContext: Sendable {
         self.ruleEngine = ruleEngine
         self.settings = settings
         self.homeDirectory = homeDirectory.standardizedFileURL
-        self.sourceResolver = sourceResolver ?? SourceResolver(applicationResolver: ApplicationMetadataResolver(homeDirectory: homeDirectory))
+        let resolvedApplicationResolver = applicationResolver ?? ApplicationMetadataResolver(homeDirectory: homeDirectory)
+        self.applicationResolver = resolvedApplicationResolver
+        self.sourceResolver = sourceResolver ?? SourceResolver(applicationResolver: resolvedApplicationResolver)
         self.fileSystemValidator = fileSystemValidator ?? FileSystemValidator(homeDirectory: homeDirectory)
         self.fileSizeCalculator = fileSizeCalculator
     }
@@ -39,6 +43,15 @@ public protocol ScannerProtocol: Sendable {
 }
 
 public enum ScannerSupport {
+    public static func stableIdentifier(_ value: String) -> String {
+        var hash: UInt64 = 14_695_981_039_346_656_037
+        for byte in value.utf8 {
+            hash ^= UInt64(byte)
+            hash &*= 1_099_511_628_211
+        }
+        return String(hash, radix: 16)
+    }
+
     public static func expandedURL(_ raw: String, homeDirectory: URL) -> URL? {
         if raw == "~" { return homeDirectory.standardizedFileURL }
         if raw.hasPrefix("~/") {
@@ -74,10 +87,11 @@ public enum ScannerSupport {
         context: ScanContext,
         sourceOverride: ResolvedSource? = nil,
         riskOverride: RiskLevel? = nil,
+        traversePackageDescendants: Bool = false,
         embeddedRule: CleanupRule? = nil
     ) async throws -> CleanableItem {
         let metadata = try context.fileSystemValidator.validateForScan(candidate, rule: rule, approvedRoot: root)
-        let size = try context.fileSizeCalculator.calculate(candidate)
+        let size = try context.fileSizeCalculator.calculate(candidate, skipPackageDescendants: !traversePackageDescendants)
         let source: ResolvedSource
         if let sourceOverride {
             source = sourceOverride
@@ -85,7 +99,7 @@ public enum ScannerSupport {
             source = await context.sourceResolver.resolve(rule: rule, itemURL: candidate)
         }
         let declaredRisk = riskOverride ?? rule.risk
-        let finalRisk = SafetyPolicy().finalRisk(rule: CleanupRule(
+        var finalRisk = SafetyPolicy().finalRisk(rule: CleanupRule(
             id: rule.id,
             version: rule.version,
             displayName: rule.displayName,
@@ -104,6 +118,9 @@ public enum ScannerSupport {
             whatItIs: rule.whatItIs,
             allowSymbolicLinks: rule.allowSymbolicLinks
         ), confidence: source.confidence, category: rule.category)
+        if source.sourceType == .systemComponent || source.bundleIdentifier == AppConfiguration.bundleIdentifier {
+            finalRisk = .protected
+        }
         let snapshot = context.fileSystemValidator.makeSnapshot(
             metadata: metadata,
             rule: rule,

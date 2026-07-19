@@ -65,6 +65,8 @@ extension AppViewModel {
 
     func scannerName(_ value: String) -> String {
         let keys = [
+            "Applications": "scanner.applications",
+            "Possible App Leftovers": "scanner.applicationLeftovers",
             "Application Caches": "scanner.applicationCaches",
             "Application Logs": "scanner.applicationLogs",
             "Developer Tool Caches": "scanner.developerCaches",
@@ -91,7 +93,10 @@ extension AppViewModel {
 
     func ruleText(_ item: CleanableItem, field: String) -> String {
         let id: String
-        if item.matchedRuleIdentifier.hasPrefix("cache.sandbox.") { id = "cache.sandbox" }
+        if item.matchedRuleIdentifier.hasPrefix("application.bundle.") { id = "application.bundle" }
+        else if item.matchedRuleIdentifier.hasPrefix("application.cache.") { id = "application.cache" }
+        else if item.matchedRuleIdentifier.hasPrefix("application.leftover.") { id = "application.leftover" }
+        else if item.matchedRuleIdentifier.hasPrefix("cache.sandbox.") { id = "cache.sandbox" }
         else if item.matchedRuleIdentifier.hasPrefix("cache.group.") { id = "cache.group" }
         else if item.matchedRuleIdentifier.hasPrefix("analysis.large-file") { id = "analysis.large-file" }
         else { id = item.matchedRuleIdentifier }
@@ -111,6 +116,7 @@ extension AppViewModel {
     func localizedMessage(_ message: String) -> String {
         let keys = [
             "Duplicate cleanup target skipped.": "message.duplicateSkipped",
+            "Overlapping cleanup target skipped.": "message.overlapSkipped",
             "Safety policy does not permit this item to be cleaned.": "message.safetySkipped",
             "Matched rule is no longer available.": "message.ruleUnavailable",
             "Validated. No file was moved because dry-run is enabled.": "message.dryRunValidated",

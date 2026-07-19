@@ -33,16 +33,27 @@ fi
 
 packaging_root="$(mktemp -d "${TMPDIR:-/tmp}/ByteTrailPackaging.XXXXXX")"
 staged_app="$packaging_root/ByteTrail.app"
-staged_iconset="$packaging_root/ByteTrail.iconset"
+asset_output="$packaging_root/AssetOutput"
+asset_info="$packaging_root/AssetInfo.plist"
 dmg_root="$(mktemp -d "${TMPDIR:-/tmp}/ByteTrailDMG.XXXXXX")"
 
-mkdir -p "$staged_app/Contents/MacOS" "$staged_app/Contents/Resources" "$staged_iconset"
-cp "$app_iconset"/*.png "$staged_iconset/"
-iconutil -c icns "$staged_iconset" -o "$packaging_root/AppIcon.icns"
+mkdir -p "$staged_app/Contents/MacOS" "$staged_app/Contents/Resources" "$asset_output"
+DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}" \
+  xcrun actool "$project_root/Sources/ByteTrailApp/Resources/Assets.xcassets" \
+    --compile "$asset_output" \
+    --platform macosx \
+    --minimum-deployment-target 13.0 \
+    --app-icon AppIcon \
+    --output-partial-info-plist "$asset_info"
+if [[ ! -f "$asset_output/AppIcon.icns" || ! -f "$asset_output/Assets.car" ]]; then
+  print -u2 "Asset compilation did not produce the required macOS icon resources."
+  exit 1
+fi
 lipo -create "$arm_binary" "$x86_binary" -output "$staged_app/Contents/MacOS/ByteTrail"
 chmod 755 "$staged_app/Contents/MacOS/ByteTrail"
 cp "$project_root/Configuration/Packaged-Info.plist" "$staged_app/Contents/Info.plist"
-cp "$packaging_root/AppIcon.icns" "$staged_app/Contents/Resources/AppIcon.icns"
+cp "$asset_output/AppIcon.icns" "$staged_app/Contents/Resources/AppIcon.icns"
+cp "$asset_output/Assets.car" "$staged_app/Contents/Resources/Assets.car"
 cp "$project_root/Sources/ByteTrailCore/Resources/CleanupRules.json" "$staged_app/Contents/Resources/CleanupRules.json"
 cp "$project_root/PRIVACY.md" "$staged_app/Contents/Resources/PRIVACY.md"
 cp "$project_root/SAFETY_MODEL.md" "$staged_app/Contents/Resources/SAFETY_MODEL.md"

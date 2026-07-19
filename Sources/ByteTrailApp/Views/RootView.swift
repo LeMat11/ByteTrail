@@ -24,6 +24,7 @@ struct RootView: View {
             Group {
                 switch model.selection ?? .overview {
                 case .overview: OverviewView()
+                case .applications: ApplicationsView()
                 case .cleanup: FindingsView(titleKey: "section.cleanup")
                 case .systemData: SystemDataView()
                 case .developerStorage: DeveloperStorageView()

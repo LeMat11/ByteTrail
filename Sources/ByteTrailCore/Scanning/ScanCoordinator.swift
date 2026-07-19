@@ -4,6 +4,7 @@ public actor ScanCoordinator {
     private let scanners: [any ScannerProtocol]
 
     public init(scanners: [any ScannerProtocol] = [
+        ApplicationScanner(), ApplicationLeftoverScanner(),
         XcodeScanner(), DeveloperToolScanner(), CacheScanner(), LogScanner(),
         InstallerScanner(), LargeFileScanner(), TrashScanner(), IOSBackupScanner()
     ]) {

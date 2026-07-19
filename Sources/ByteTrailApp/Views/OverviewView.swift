@@ -70,6 +70,8 @@ struct OverviewView: View {
                 }
             }
             Divider()
+            categoryLine("overview.applications", categories: [.applicationBundle], symbol: "app")
+            categoryLine("overview.appLeftovers", categories: [.applicationLeftover], symbol: "folder.badge.questionmark")
             categoryLine("overview.safeRegeneratable", categories: [.userCache, .userLog, .xcodeDerivedData, .developerCache], symbol: "checkmark.shield")
             categoryLine("overview.developerData", categories: [.xcodeDerivedData, .xcodeArchive, .xcodeDeviceSupport, .simulatorData, .developerCache], symbol: "hammer")
             categoryLine("overview.installers", categories: [.installer], symbol: "shippingbox")

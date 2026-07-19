@@ -108,6 +108,7 @@ public actor CleanupCoordinator {
     private let trashOperation: TrashCleanupOperation
     private let vaultOperation: RecoveryVaultOperation
     private let restoreOperation: RestoreOperation
+    private let homeDirectory: URL
 
     public init(
         ruleEngine: RuleEngine,
@@ -116,7 +117,8 @@ public actor CleanupCoordinator {
         recoveryStore: RecoveryStore = RecoveryStore(),
         trashOperation: TrashCleanupOperation = TrashCleanupOperation(),
         vaultOperation: RecoveryVaultOperation = RecoveryVaultOperation(),
-        restoreOperation: RestoreOperation = RestoreOperation()
+        restoreOperation: RestoreOperation = RestoreOperation(),
+        homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser
     ) {
         self.ruleEngine = ruleEngine
         self.validator = validator
@@ -125,17 +127,31 @@ public actor CleanupCoordinator {
         self.trashOperation = trashOperation
         self.vaultOperation = vaultOperation
         self.restoreOperation = restoreOperation
+        self.homeDirectory = homeDirectory.standardizedFileURL
     }
 
     public func clean(items: [CleanableItem], dryRun: Bool) async -> [CleanupResult] {
         var results: [CleanupResult] = []
         var processedPaths = Set<String>()
-        for item in items {
+        var processedRoots: [URL] = []
+        let orderedItems = items.sorted {
+            URL(fileURLWithPath: $0.standardizedPath).pathComponents.count
+                < URL(fileURLWithPath: $1.standardizedPath).pathComponents.count
+        }
+        for item in orderedItems {
             if Task.isCancelled { break }
             guard processedPaths.insert(item.standardizedPath).inserted else {
                 results.append(CleanupResult(itemID: item.id, status: .skipped, originalURL: item.provenance.currentURL, resultingURL: nil, bytesProcessed: 0, message: "Duplicate cleanup target skipped."))
                 continue
             }
+            let target = URL(fileURLWithPath: item.standardizedPath).standardizedFileURL
+            if processedRoots.contains(where: {
+                PathContainmentValidator().isContained(target, in: $0, allowRootItself: false)
+            }) {
+                results.append(CleanupResult(itemID: item.id, status: .skipped, originalURL: item.provenance.currentURL, resultingURL: nil, bytesProcessed: 0, message: "Overlapping cleanup target skipped."))
+                continue
+            }
+            processedRoots.append(target)
             results.append(await clean(item: item, dryRun: dryRun))
         }
         return results
@@ -148,7 +164,7 @@ public actor CleanupCoordinator {
         }
         guard let rule = ruleEngine.rule(identifier: item.matchedRuleIdentifier) ?? item.embeddedRule,
               rule.id == item.matchedRuleIdentifier,
-              (try? RuleValidator().validate([rule])) != nil else {
+              (try? RuleValidator().validate([rule], homeDirectory: homeDirectory)) != nil else {
             return await record(item: item, result: CleanupResult(itemID: item.id, status: .skipped, originalURL: original, resultingURL: nil, bytesProcessed: 0, message: "Matched rule is no longer available."))
         }
         do {
@@ -167,6 +183,10 @@ public actor CleanupCoordinator {
                     let destination = try trashOperation.execute(source: original)
                     return await record(item: item, result: CleanupResult(itemID: item.id, status: .movedToTrash, originalURL: original, resultingURL: destination, bytesProcessed: item.allocatedSize, message: "Moved to Trash."))
                 } catch {
+                    // Application bundles live under protected Applications roots. If Trash is
+                    // unavailable, fail closed instead of vaulting an app that restore policy
+                    // would correctly refuse to write back into a protected root.
+                    if item.category == .applicationBundle { throw error }
                     return try await moveToVault(item: item)
                 }
             }

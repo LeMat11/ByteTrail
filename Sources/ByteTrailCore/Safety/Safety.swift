@@ -22,6 +22,64 @@ public struct PathContainmentValidator: Sendable {
     }
 }
 
+public struct BundleIdentifierPolicy: Sendable {
+    public init() {}
+
+    public func isConservativeCandidate(_ value: String) -> Bool {
+        guard value.count <= 255 else { return false }
+        let components = value.split(separator: ".", omittingEmptySubsequences: false)
+        guard components.count >= 2 else { return false }
+        return components.allSatisfy { component in
+            guard !component.isEmpty, component.count <= 63,
+                  let first = component.first, let last = component.last,
+                  first.isASCII && (first.isLetter || first.isNumber),
+                  last.isASCII && (last.isLetter || last.isNumber) else {
+                return false
+            }
+            return component.allSatisfy { character in
+                character.isASCII && (character.isLetter || character.isNumber || character == "-")
+            }
+        }
+    }
+}
+
+public struct ApplicationPathPolicy: Sendable {
+    public let homeDirectory: URL
+    private let containment = PathContainmentValidator()
+
+    public init(homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser) {
+        self.homeDirectory = homeDirectory.standardizedFileURL
+    }
+
+    public var inventoryRoots: [URL] {
+        [
+            URL(fileURLWithPath: "/Applications", isDirectory: true),
+            URL(fileURLWithPath: "/System/Applications", isDirectory: true),
+            homeDirectory.appendingPathComponent("Applications", isDirectory: true)
+        ]
+    }
+
+    public func isRecognizedApplicationBundle(_ url: URL) -> Bool {
+        let candidate = url.standardizedFileURL
+        guard candidate.pathExtension.lowercased() == "app" else { return false }
+        return inventoryRoots.contains { root in
+            guard containment.isContained(candidate, in: root, allowRootItself: false) else { return false }
+            let relativeComponents = candidate.pathComponents.dropFirst(root.standardizedFileURL.pathComponents.count)
+            return !relativeComponents.dropLast().contains { component in
+                URL(fileURLWithPath: component).pathExtension.lowercased() == "app"
+            }
+        }
+    }
+
+    public func isSystemApplication(_ url: URL) -> Bool {
+        containment.isContained(
+            url.standardizedFileURL,
+            in: URL(fileURLWithPath: "/System/Applications", isDirectory: true),
+            allowRootItself: false
+        )
+    }
+}
+
 public struct ProtectedPathPolicy: Sendable {
     public let homeDirectory: URL
     private let containment = PathContainmentValidator()
@@ -110,10 +168,12 @@ public struct FileSystemValidator: @unchecked Sendable {
     private let fileManager: FileManager
     private let containment = PathContainmentValidator()
     private let protectedPolicy: ProtectedPathPolicy
+    private let applicationPolicy: ApplicationPathPolicy
 
     public init(fileManager: FileManager = .default, homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser) {
         self.fileManager = fileManager
         self.protectedPolicy = ProtectedPathPolicy(homeDirectory: homeDirectory)
+        self.applicationPolicy = ApplicationPathPolicy(homeDirectory: homeDirectory)
     }
 
     public func metadata(for url: URL) throws -> FileSystemMetadata {
@@ -154,7 +214,12 @@ public struct FileSystemValidator: @unchecked Sendable {
         guard containment.isContained(standardized, in: approvedRoot) else {
             throw FileValidationError.outsideApprovedRoot
         }
-        if protectedPolicy.isAlwaysProtected(standardized) { throw FileValidationError.protectedPath }
+        let exactApplicationBundle = rule.category == .applicationBundle
+            && standardized == approvedRoot.standardizedFileURL
+            && applicationPolicy.isRecognizedApplicationBundle(standardized)
+        if protectedPolicy.isAlwaysProtected(standardized) && !exactApplicationBundle {
+            throw FileValidationError.protectedPath
+        }
         if protectedPolicy.intersectsProtectedDescendant(standardized) { throw FileValidationError.containsProtectedDescendant }
         let metadata = try metadata(for: standardized)
         if metadata.isAliasFile { throw FileValidationError.aliasFile }
@@ -269,7 +334,7 @@ public struct SafetyPolicy: Sendable {
         guard let rule else { return .protected }
         if rule.risk == .protected { return .protected }
         if confidence == .low || confidence == .unknown { return .review }
-        if category == .largeFile || category == .xcodeArchive || category == .iosBackup || category == .applicationLeftover {
+        if category == .applicationBundle || category == .largeFile || category == .xcodeArchive || category == .iosBackup || category == .applicationLeftover {
             return .review
         }
         return rule.risk

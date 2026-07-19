@@ -3,8 +3,8 @@ import Foundation
 public enum AppConfiguration {
     public static let productName = "ByteTrail"
     public static let bundleIdentifier = "com.bytetrail.mac"
-    public static let version = "1.1.0"
-    public static let build = "2"
+    public static let version = "1.2.0"
+    public static let build = "3"
     public static let deploymentTarget = "13.0"
     public static let tagline = "Every byte has a source."
 }
@@ -64,6 +64,7 @@ public enum SourceType: String, Codable, Sendable {
 }
 
 public enum ScanCategory: String, Codable, CaseIterable, Sendable {
+    case applicationBundle = "application-bundle"
     case userCache = "user-cache"
     case userLog = "user-log"
     case trash
@@ -80,6 +81,7 @@ public enum ScanCategory: String, Codable, CaseIterable, Sendable {
 
     public var label: String {
         switch self {
+        case .applicationBundle: return "Application"
         case .userCache: return "User Cache"
         case .userLog: return "Logs"
         case .trash: return "Trash"

@@ -29,7 +29,7 @@ public struct FileSizeCalculator: @unchecked Sendable {
         self.fileManager = fileManager
     }
 
-    public func calculate(_ root: URL) throws -> FileSizeResult {
+    public func calculate(_ root: URL, skipPackageDescendants: Bool = true) throws -> FileSizeResult {
         let keys: [URLResourceKey] = [
             .isRegularFileKey, .isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey,
             .fileAllocatedSizeKey, .totalFileSizeKey, .totalFileAllocatedSizeKey,
@@ -49,7 +49,7 @@ public struct FileSizeCalculator: @unchecked Sendable {
         var result = FileSizeResult()
         var seenResourceIdentifiers = Set<String>()
         let started = Date()
-        let options: FileManager.DirectoryEnumerationOptions = [.skipsPackageDescendants]
+        let options: FileManager.DirectoryEnumerationOptions = skipPackageDescendants ? [.skipsPackageDescendants] : []
         guard let enumerator = fileManager.enumerator(at: root, includingPropertiesForKeys: keys, options: options) else {
             throw CocoaError(.fileReadNoPermission)
         }

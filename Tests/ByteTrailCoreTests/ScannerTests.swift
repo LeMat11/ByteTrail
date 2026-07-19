@@ -27,6 +27,159 @@ private struct FixtureEventScanner: ScannerProtocol {
 }
 
 final class ScannerTests: XCTestCase {
+    func testApplicationScannerMeasuresExactBundleAndInstalledCache() async throws {
+        let fixture = try TemporaryFixture()
+        let applications = try fixture.directory("Applications")
+        let application = try fixture.application(
+            "Applications/Fixture.app",
+            bundleIdentifier: "com.example.fixture",
+            name: "Fixture App"
+        )
+        _ = try fixture.file("Applications/Fixture.app/Contents/MacOS/Fixture", bytes: 2_048)
+        let cache = try fixture.directory("Library/Caches/com.example.fixture")
+        _ = try fixture.file("Library/Caches/com.example.fixture/cache.bin", bytes: 512)
+        _ = try fixture.file("Library/Caches/com.example.fixture-lookalike/cache.bin", bytes: 512)
+        let applicationResolver = ApplicationMetadataResolver(
+            homeDirectory: fixture.root,
+            applicationRoots: [applications]
+        )
+        let context = ScanContext(
+            ruleEngine: try RuleEngine(homeDirectory: fixture.root),
+            settings: ScanSettings(),
+            homeDirectory: fixture.root,
+            applicationResolver: applicationResolver,
+            fileSystemValidator: FileSystemValidator(homeDirectory: fixture.root)
+        )
+        var findings: [CleanableItem] = []
+
+        for await event in ApplicationScanner().scan(context: context) {
+            if case let .finding(item) = event { findings.append(item) }
+        }
+
+        let bundle = try XCTUnwrap(findings.first { $0.category == .applicationBundle })
+        XCTAssertEqual(bundle.standardizedPath, application.path)
+        XCTAssertEqual(bundle.displayName, "Fixture App")
+        XCTAssertEqual(bundle.provenance.producedByIdentifier, "com.example.fixture")
+        XCTAssertEqual(bundle.riskLevel, .review)
+        XCTAssertFalse(bundle.selected)
+        XCTAssertGreaterThanOrEqual(bundle.size, 2_048)
+        XCTAssertGreaterThanOrEqual(bundle.fileCount, 2)
+        XCTAssertEqual(bundle.approvedRoot, application.path)
+
+        let coordinator = CleanupCoordinator(
+            ruleEngine: try RuleEngine(rules: [], homeDirectory: fixture.root),
+            validator: FileSystemValidator(homeDirectory: fixture.root),
+            historyStore: CleanupHistoryStore(storageURL: fixture.root.appendingPathComponent("state/history.json")),
+            recoveryStore: RecoveryStore(storageURL: fixture.root.appendingPathComponent("state/recovery.json")),
+            vaultOperation: RecoveryVaultOperation(vaultRoot: fixture.root.appendingPathComponent("vault")),
+            homeDirectory: fixture.root
+        )
+        let cleanupResults = await coordinator.clean(items: [bundle], dryRun: true)
+        XCTAssertEqual(cleanupResults.first?.status, .dryRun)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: application.path))
+
+        let exactCache = try XCTUnwrap(findings.first { $0.standardizedPath == cache.path })
+        XCTAssertEqual(exactCache.category, .userCache)
+        XCTAssertEqual(exactCache.provenance.sourceApplicationURL, application)
+        XCTAssertEqual(exactCache.riskLevel, .safe)
+        XCTAssertEqual(exactCache.approvedRoot, cache.path)
+        XCTAssertFalse(findings.contains { $0.standardizedPath.hasSuffix("com.example.fixture-lookalike") })
+    }
+
+    func testByteTrailApplicationIsProtectedAndAnalysisOnly() async throws {
+        let fixture = try TemporaryFixture()
+        let applications = try fixture.directory("Applications")
+        let application = try fixture.application(
+            "Applications/ByteTrail.app",
+            bundleIdentifier: AppConfiguration.bundleIdentifier,
+            name: "ByteTrail"
+        )
+        let applicationResolver = ApplicationMetadataResolver(
+            homeDirectory: fixture.root,
+            applicationRoots: [applications]
+        )
+        let context = ScanContext(
+            ruleEngine: try RuleEngine(homeDirectory: fixture.root),
+            settings: ScanSettings(),
+            homeDirectory: fixture.root,
+            applicationResolver: applicationResolver,
+            fileSystemValidator: FileSystemValidator(homeDirectory: fixture.root)
+        )
+        var findings: [CleanableItem] = []
+
+        for await event in ApplicationScanner().scan(context: context) {
+            if case let .finding(item) = event { findings.append(item) }
+        }
+
+        let item = try XCTUnwrap(findings.first { $0.standardizedPath == application.path })
+        XCTAssertEqual(item.riskLevel, .protected)
+        XCTAssertEqual(item.cleanupMethod, .analysisOnly)
+        XCTAssertFalse(item.selected)
+    }
+
+    func testApplicationLeftoversAreImmediateConservativeReviewCandidates() async throws {
+        let fixture = try TemporaryFixture()
+        let applications = try fixture.directory("Applications")
+        _ = try fixture.application(
+            "Applications/Installed.app",
+            bundleIdentifier: "com.example.installed",
+            name: "Installed"
+        )
+        _ = try fixture.file("Library/Caches/com.example.removed/cache.bin", bytes: 64)
+        _ = try fixture.file("Library/Caches/com.example.installed/cache.bin", bytes: 64)
+        _ = try fixture.file("Library/Caches/com.apple.synthetic/cache.bin", bytes: 64)
+        _ = try fixture.file("Library/Caches/com.bytetrail.mac/cache.bin", bytes: 64)
+        _ = try fixture.file("Library/Caches/Friendly App/cache.bin", bytes: 64)
+        _ = try fixture.file("Library/Preferences/com.example.preference.plist", bytes: 64)
+        _ = try fixture.file("Library/Preferences/com.example.wrong-extension.json", bytes: 64)
+        _ = try fixture.file("Library/Application Support/com.example.parent/com.example.nested/data.bin", bytes: 64)
+        let escapedTarget = try fixture.directory("Outside")
+        let link = fixture.root.appendingPathComponent("Library/Logs/com.example.link")
+        try FileManager.default.createDirectory(at: link.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: escapedTarget)
+        let applicationResolver = ApplicationMetadataResolver(
+            homeDirectory: fixture.root,
+            applicationRoots: [applications]
+        )
+        let context = ScanContext(
+            ruleEngine: try RuleEngine(homeDirectory: fixture.root),
+            settings: ScanSettings(),
+            homeDirectory: fixture.root,
+            applicationResolver: applicationResolver,
+            fileSystemValidator: FileSystemValidator(homeDirectory: fixture.root)
+        )
+        var findings: [CleanableItem] = []
+
+        for await event in ApplicationLeftoverScanner().scan(context: context) {
+            if case let .finding(item) = event { findings.append(item) }
+        }
+
+        let identifiers = Set(findings.compactMap(\.provenance.producedByIdentifier))
+        XCTAssertTrue(identifiers.contains("com.example.removed"))
+        XCTAssertTrue(identifiers.contains("com.example.preference"))
+        XCTAssertTrue(identifiers.contains("com.example.parent"))
+        XCTAssertFalse(identifiers.contains("com.example.installed"))
+        XCTAssertFalse(identifiers.contains("com.apple.synthetic"))
+        XCTAssertFalse(identifiers.contains("com.bytetrail.mac"))
+        XCTAssertFalse(identifiers.contains("Friendly App"))
+        XCTAssertFalse(identifiers.contains("com.example.wrong-extension"))
+        XCTAssertFalse(identifiers.contains("com.example.nested"))
+        XCTAssertFalse(identifiers.contains("com.example.link"))
+        XCTAssertTrue(findings.allSatisfy { $0.riskLevel == .review && !$0.selected })
+        XCTAssertTrue(findings.allSatisfy { $0.cleanupMethod == .recoveryVault })
+    }
+
+    func testBundleIdentifierPolicyRejectsAmbiguousDirectoryNames() {
+        let policy = BundleIdentifierPolicy()
+        XCTAssertTrue(policy.isConservativeCandidate("com.example.application"))
+        XCTAssertTrue(policy.isConservativeCandidate("org.example.app-helper"))
+        XCTAssertFalse(policy.isConservativeCandidate("Application Support"))
+        XCTAssertFalse(policy.isConservativeCandidate("com..example"))
+        XCTAssertFalse(policy.isConservativeCandidate(".com.example"))
+        XCTAssertFalse(policy.isConservativeCandidate("com.example_legacy"))
+        XCTAssertFalse(policy.isConservativeCandidate("com.example."))
+    }
+
     func testInstalledApplicationResolverUsesExactBundleIdentifier() async throws {
         let fixture = try TemporaryFixture()
         let applications = try fixture.directory("Applications")

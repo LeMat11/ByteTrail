@@ -98,6 +98,7 @@ public struct RuleValidator: Sendable {
 
     public func validate(_ rules: [CleanupRule], homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser) throws {
         var identifiers = Set<String>()
+        let applicationPolicy = ApplicationPathPolicy(homeDirectory: homeDirectory)
         for rule in rules {
             guard !rule.id.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                 throw RuleValidationError.emptyIdentifier
@@ -115,13 +116,25 @@ public struct RuleValidator: Sendable {
             if rule.risk == .protected && rule.cleanupMethod != .analysisOnly {
                 throw RuleValidationError.unsafeRiskCombination(rule.id)
             }
+            if rule.category == .applicationBundle && rule.approvedRoots.count != 1 {
+                throw RuleValidationError.invalidApprovedRoot(rule: rule.id, root: rule.approvedRoots.joined(separator: ", "))
+            }
             for (index, rawRoot) in rule.approvedRoots.enumerated() {
                 guard index < rule.expandedRoots(homeDirectory: homeDirectory).count,
                       rawRoot == "~" || rawRoot.hasPrefix("~/") || rawRoot.hasPrefix("/") else {
                     throw RuleValidationError.invalidApprovedRoot(rule: rule.id, root: rawRoot)
                 }
                 let root = rule.expandedRoots(homeDirectory: homeDirectory)[index]
-                if ProtectedPathPolicy(homeDirectory: homeDirectory).isAlwaysProtected(root) {
+                let exactApplicationBundle = rule.category == .applicationBundle
+                    && applicationPolicy.isRecognizedApplicationBundle(root)
+                if rule.category == .applicationBundle && !exactApplicationBundle {
+                    throw RuleValidationError.invalidApprovedRoot(rule: rule.id, root: rawRoot)
+                }
+                if applicationPolicy.isSystemApplication(root)
+                    && (rule.risk != .protected || rule.cleanupMethod != .analysisOnly) {
+                    throw RuleValidationError.unsafeRiskCombination(rule.id)
+                }
+                if ProtectedPathPolicy(homeDirectory: homeDirectory).isAlwaysProtected(root) && !exactApplicationBundle {
                     throw RuleValidationError.protectedApprovedRoot(rule: rule.id, root: rawRoot)
                 }
             }

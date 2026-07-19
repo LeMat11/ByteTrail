@@ -2,6 +2,7 @@
 "app.localPrivacy" = "本地处理 · 无遥测";
 
 "section.overview" = "概览";
+"section.applications" = "应用与残留";
 "section.cleanup" = "检查与清理";
 "section.systemData" = "系统数据";
 "section.developerStorage" = "开发者存储";
@@ -50,6 +51,8 @@
 "overview.foundReview" = "ByteTrail 找到 %@ 的内容可供检查。";
 "overview.lastScan" = "上次扫描：%@";
 "overview.safeRegeneratable" = "可安全重新生成";
+"overview.applications" = "已安装应用";
+"overview.appLeftovers" = "可能的应用残留";
 "overview.developerData" = "开发者数据";
 "overview.installers" = "安装程序与下载";
 "overview.largeFilesReview" = "需要检查的大文件";
@@ -62,6 +65,8 @@
 "scan.inspected" = "已检查 %ld 项";
 "scan.findings" = "发现 %ld 项";
 "scanner.preparing" = "正在准备";
+"scanner.applications" = "应用";
+"scanner.applicationLeftovers" = "可能的应用残留";
 "scanner.applicationCaches" = "应用缓存";
 "scanner.applicationLogs" = "应用日志";
 "scanner.developerCaches" = "开发工具缓存";
@@ -107,6 +112,7 @@
 "cleanup.status.failed" = "失败";
 
 "category.user-cache" = "应用缓存";
+"category.application-bundle" = "应用";
 "category.user-log" = "日志";
 "category.trash" = "废纸篓";
 "category.xcode-derived-data" = "Xcode 派生数据";
@@ -154,10 +160,19 @@
 "largeFiles.downloadsOnly" = "当前仅扫描下载文件夹。";
 "systemData.explanation" = "macOS 的“系统数据”是由系统管理的宽泛类别。ByteTrail 会显示可识别的存储来源，因此数值可能与 Apple 的报告不完全一致。";
 
+"applications.scopeTitle" = "聚焦应用相关空间";
+"applications.scopeHelp" = "显示已安装的应用本体、与 Bundle ID 精确匹配的缓存、下载的安装包，以及保守识别的残留候选。偏好设置和仍在使用的常规应用数据不会被当作清理目标。";
+"applications.localOnly" = "匹配和容量计算全部在本机完成";
+"applications.installed" = "已安装应用";
+"applications.exactCaches" = "精确应用缓存";
+"applications.leftovers" = "可能的残留";
+"applications.installers" = "安装包";
+
 "cleanup.results" = "清理结果";
 "cleanup.simulationResults" = "模拟结果";
 "cleanup.inProgress" = "正在清理所选项目…";
 "message.duplicateSkipped" = "已跳过重复的清理目标。";
+"message.overlapSkipped" = "已跳过重叠的子目标，避免同一份数据被重复处理。";
 "message.safetySkipped" = "安全策略不允许清理此项目。";
 "message.ruleUnavailable" = "匹配的规则已不可用。";
 "message.dryRunValidated" = "验证通过。Debug 模拟未移动文件。";
@@ -225,6 +240,10 @@
 "settings.fullDiskAccessValue" = "不会自动请求";
 "settings.permissionsHelp" = "ByteTrail 在普通文件权限下仍可使用；无法访问的来源会单独报告。";
 "settings.documentation" = "文档";
+"settings.scanner.applications" = "已安装应用与精确缓存";
+"settings.scanner.applications.help" = "计算 .app 本体，并且只匹配 ~/Library/Caches/<Bundle ID> 这一精确缓存目录";
+"settings.scanner.leftovers" = "可能的应用残留";
+"settings.scanner.leftovers.help" = "仅识别没有对应已安装应用的顶层 Bundle ID 形状项目，并始终标为“需检查”";
 "settings.scanner.xcode" = "Xcode 存储";
 "settings.scanner.xcode.help" = "派生数据、归档、设备支持和模拟器缓存";
 "settings.scanner.developer" = "开发工具缓存";
@@ -242,6 +261,18 @@
 "settings.scanner.backups" = "iOS 备份";
 "settings.scanner.backups.help" = "完整的本地备份单元；始终需要检查";
 
+"rule.application.bundle.what" = "包含可执行文件、框架和资源的已安装应用本体。";
+"rule.application.bundle.reason" = "不再需要时可以卸载；如果来源仍然可用，以后可以重新安装。";
+"rule.application.bundle.impact" = "应用本体会离开当前位置；用户文档和其他应用数据不包含在内。";
+"rule.application.bundle.evidence" = "匹配到一个确切的 .app 应用包，并从 Info.plist 读取其 Bundle ID。";
+"rule.application.cache.what" = "位于以已安装应用 Bundle ID 精确命名目录中的临时缓存。";
+"rule.application.cache.reason" = "已安装应用可以重新创建这个精确匹配的缓存。";
+"rule.application.cache.impact" = "应用重新创建或下载缓存时，首次打开可能变慢。";
+"rule.application.cache.evidence" = "缓存目录名与已安装应用的 Bundle ID 完全一致。";
+"rule.application.leftover.what" = "一项需要逐个检查的可能应用残留。";
+"rule.application.leftover.reason" = "没有发现 Bundle ID 完全相同的已安装应用，但这不能证明该数据已经无人使用。";
+"rule.application.leftover.impact" = "已卸载应用、后台辅助程序或命令行工具仍可能依赖它；ByteTrail 会把该项目保留为可恢复状态。";
+"rule.application.leftover.evidence" = "匹配到 Bundle ID 形状的顶层项目，且没有找到 Bundle ID 相同的已安装应用。";
 "rule.cache.user-app.what" = "应用为了避免重复工作而保存的临时数据。";
 "rule.cache.user-app.reason" = "应用可以在需要时重新创建缓存内容。";
 "rule.cache.user-app.impact" = "来源应用在重新创建或下载缓存时，首次打开可能变慢。";

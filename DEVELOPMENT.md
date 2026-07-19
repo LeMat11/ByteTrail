@@ -49,6 +49,12 @@ On a Mac with full Xcode:
 ```sh
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
 xcodebuild -project ByteTrail.xcodeproj -scheme ByteTrail \
+  -configuration Debug -destination 'platform=macOS,arch=arm64' \
+  -derivedDataPath .build/XcodeDerivedData \
+  CODE_SIGNING_ALLOWED=NO REGISTER_APP_WITH_LAUNCH_SERVICES=NO build
+
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
+xcodebuild -project ByteTrail.xcodeproj -scheme ByteTrail \
   -configuration Debug -derivedDataPath .build/XcodeDerivedData test
 ```
 

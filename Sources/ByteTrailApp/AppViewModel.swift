@@ -5,6 +5,7 @@ import SwiftUI
 
 enum SidebarSection: String, CaseIterable, Identifiable {
     case overview
+    case applications
     case cleanup
     case systemData
     case developerStorage
@@ -18,6 +19,7 @@ enum SidebarSection: String, CaseIterable, Identifiable {
     var symbol: String {
         switch self {
         case .overview: return "chart.pie"
+        case .applications: return "square.grid.2x2"
         case .cleanup: return "checklist"
         case .systemData: return "internaldrive"
         case .developerStorage: return "hammer"
@@ -154,6 +156,15 @@ final class AppViewModel: ObservableObject {
 
     func setSelected(_ id: UUID, selected: Bool) {
         guard let index = items.firstIndex(where: { $0.id == id }), canSelect(items[index]) else { return }
+        if selected {
+            let target = URL(fileURLWithPath: items[index].standardizedPath).standardizedFileURL
+            for otherIndex in items.indices where otherIndex != index && items[otherIndex].selected {
+                let other = URL(fileURLWithPath: items[otherIndex].standardizedPath).standardizedFileURL
+                let overlaps = PathContainmentValidator().isContained(target, in: other, allowRootItself: false)
+                    || PathContainmentValidator().isContained(other, in: target, allowRootItself: false)
+                if overlaps { items[otherIndex].selected = false }
+            }
+        }
         items[index].selected = selected
     }
 

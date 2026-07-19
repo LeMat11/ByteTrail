@@ -1,5 +1,45 @@
+import AppKit
 import ByteTrailCore
 import SwiftUI
+
+struct FindingIcon: View {
+    let item: CleanableItem
+    let size: CGFloat
+
+    var body: some View {
+        Group {
+            if let reference = item.sourceIconReference, reference.hasPrefix("/") {
+                Image(nsImage: NSWorkspace.shared.icon(forFile: reference))
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+            } else {
+                Image(systemName: symbol)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .foregroundStyle(.secondary)
+                    .padding(size * 0.12)
+            }
+        }
+        .frame(width: size, height: size)
+        .accessibilityHidden(true)
+    }
+
+    private var symbol: String {
+        switch item.category {
+        case .applicationBundle: return "app"
+        case .applicationLeftover: return "folder.badge.questionmark"
+        case .xcodeDerivedData, .xcodeArchive, .xcodeDeviceSupport, .simulatorData: return "hammer"
+        case .developerCache: return "terminal"
+        case .trash: return "trash"
+        case .largeFile: return "doc.text.magnifyingglass"
+        case .installer: return "shippingbox"
+        case .iosBackup: return "iphone"
+        case .userCache: return "bolt.horizontal.circle"
+        case .userLog: return "doc.text"
+        case .unknown: return "folder"
+        }
+    }
+}
 
 struct RiskBadge: View {
     let risk: RiskLevel
@@ -122,7 +162,7 @@ struct EvidenceDetailView: View {
 
     private var evidenceHeading: some View {
         HStack(alignment: .top) {
-            Image(systemName: icon).font(.largeTitle).frame(width: 42)
+            FindingIcon(item: item, size: 42)
             VStack(alignment: .leading) {
                 Text(verbatim: item.displayName).font(.title2.weight(.semibold))
                 Text(verbatim: model.sourceName(item)).foregroundStyle(.secondary)
@@ -138,16 +178,6 @@ struct EvidenceDetailView: View {
         }
     }
 
-    private var icon: String {
-        switch item.category {
-        case .xcodeDerivedData, .xcodeArchive, .xcodeDeviceSupport, .simulatorData: return "hammer"
-        case .developerCache: return "terminal"
-        case .trash: return "trash"
-        case .largeFile, .installer: return "doc"
-        case .iosBackup: return "iphone"
-        default: return "shippingbox"
-        }
-    }
 }
 
 private struct EvidenceField: View {

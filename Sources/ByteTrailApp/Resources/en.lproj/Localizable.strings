@@ -2,6 +2,7 @@
 "app.localPrivacy" = "Local processing · No telemetry";
 
 "section.overview" = "Overview";
+"section.applications" = "Applications & Leftovers";
 "section.cleanup" = "Review & Clean Up";
 "section.systemData" = "System Data";
 "section.developerStorage" = "Developer Storage";
@@ -50,6 +51,8 @@
 "overview.foundReview" = "ByteTrail found %@ worth reviewing.";
 "overview.lastScan" = "Last scan %@";
 "overview.safeRegeneratable" = "Safely regeneratable";
+"overview.applications" = "Installed applications";
+"overview.appLeftovers" = "Possible app leftovers";
 "overview.developerData" = "Developer data";
 "overview.installers" = "Installers and downloads";
 "overview.largeFilesReview" = "Large files requiring review";
@@ -62,6 +65,8 @@
 "scan.inspected" = "%ld inspected";
 "scan.findings" = "%ld findings";
 "scanner.preparing" = "Preparing";
+"scanner.applications" = "Applications";
+"scanner.applicationLeftovers" = "Possible App Leftovers";
 "scanner.applicationCaches" = "Application Caches";
 "scanner.applicationLogs" = "Application Logs";
 "scanner.developerCaches" = "Developer Tool Caches";
@@ -107,6 +112,7 @@
 "cleanup.status.failed" = "Failed";
 
 "category.user-cache" = "Application Cache";
+"category.application-bundle" = "Application";
 "category.user-log" = "Logs";
 "category.trash" = "Trash";
 "category.xcode-derived-data" = "Xcode Derived Data";
@@ -154,10 +160,19 @@
 "largeFiles.downloadsOnly" = "Currently scanning Downloads only.";
 "systemData.explanation" = "macOS System Data is a broad system-managed category. ByteTrail shows identifiable storage sources and may not match Apple’s reported number exactly.";
 
+"applications.scopeTitle" = "Focused application storage";
+"applications.scopeHelp" = "Shows installed app bundles, exact Bundle-ID caches, downloaded installers, and conservative leftover candidates. Preferences and general active-app data are not treated as cleanup targets.";
+"applications.localOnly" = "Matched and measured entirely on this Mac";
+"applications.installed" = "Installed apps";
+"applications.exactCaches" = "Exact app caches";
+"applications.leftovers" = "Possible leftovers";
+"applications.installers" = "Installers";
+
 "cleanup.results" = "Cleanup Results";
 "cleanup.simulationResults" = "Simulation Results";
 "cleanup.inProgress" = "Cleaning selected items…";
 "message.duplicateSkipped" = "Duplicate cleanup target skipped.";
+"message.overlapSkipped" = "An overlapping child target was skipped to prevent processing the same data twice.";
 "message.safetySkipped" = "Safety policy does not permit this item to be cleaned.";
 "message.ruleUnavailable" = "Matched rule is no longer available.";
 "message.dryRunValidated" = "Validated. Debug simulation did not move the file.";
@@ -225,6 +240,10 @@
 "settings.fullDiskAccessValue" = "Not requested automatically";
 "settings.permissionsHelp" = "ByteTrail remains useful with normal file access. Unavailable sources are reported individually.";
 "settings.documentation" = "Documentation";
+"settings.scanner.applications" = "Installed applications and exact caches";
+"settings.scanner.applications.help" = "Measures installed .app bundles and only the exact ~/Library/Caches/<Bundle ID> match";
+"settings.scanner.leftovers" = "Possible application leftovers";
+"settings.scanner.leftovers.help" = "Conservative top-level Bundle-ID matches with no installed app; always Review";
 "settings.scanner.xcode" = "Xcode storage";
 "settings.scanner.xcode.help" = "Derived Data, Archives, Device Support, and simulator caches";
 "settings.scanner.developer" = "Developer-tool caches";
@@ -243,6 +262,18 @@
 "settings.scanner.backups.help" = "Whole local backup units; always Review";
 
 "rule.cache.user-app.what" = "Temporary data stored by an application to avoid repeating work.";
+"rule.application.bundle.what" = "The installed application bundle containing its executable, frameworks, and resources.";
+"rule.application.bundle.reason" = "The application can be removed when it is no longer needed and can be reinstalled later if still available.";
+"rule.application.bundle.impact" = "The application bundle will leave its current location. User documents and other app data are not included.";
+"rule.application.bundle.evidence" = "Matched one exact installed .app bundle and read its Bundle ID from Info.plist.";
+"rule.application.cache.what" = "Temporary data stored in the exact cache directory named after an installed app’s Bundle ID.";
+"rule.application.cache.reason" = "The installed application can recreate this exact Bundle-ID cache.";
+"rule.application.cache.impact" = "The application may open more slowly while it recreates or downloads cached data.";
+"rule.application.cache.evidence" = "The cache directory name exactly matches the installed application’s Bundle ID.";
+"rule.application.leftover.what" = "A possible application leftover that requires individual review.";
+"rule.application.leftover.reason" = "No installed application with this exact Bundle ID was found, but absence is not proof that the data is unused.";
+"rule.application.leftover.impact" = "A removed app, background helper, or command-line tool may still rely on it. ByteTrail keeps the item recoverable.";
+"rule.application.leftover.evidence" = "Matched one exact Bundle-ID-shaped top-level item and found no installed app with the same Bundle ID.";
 "rule.cache.user-app.reason" = "Applications can recreate cache content when needed.";
 "rule.cache.user-app.impact" = "The source application may open more slowly while it recreates or downloads this cache.";
 "rule.cache.user-app.evidence" = "Matched a top-level directory inside the user cache root.";

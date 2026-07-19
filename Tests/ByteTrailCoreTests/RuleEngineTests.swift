@@ -3,6 +3,58 @@ import XCTest
 @testable import ByteTrailCore
 
 final class RuleEngineTests: XCTestCase {
+    func testSystemApplicationRuleMustRemainProtectedAndAnalysisOnly() throws {
+        let root = URL(fileURLWithPath: "/System/Applications/Synthetic.app", isDirectory: true)
+        let valid = CleanupRule(
+            id: "application.system.synthetic",
+            displayName: "Synthetic System App",
+            producedBy: "Synthetic",
+            producedByIdentifier: "com.apple.synthetic",
+            sourceType: .systemComponent,
+            category: .applicationBundle,
+            approvedRoots: [root.path],
+            risk: .protected,
+            regeneratable: false,
+            cleanupMethod: .analysisOnly,
+            reason: "Synthetic test rule.",
+            impact: "No cleanup is permitted.",
+            evidence: "Exact synthetic system app path.",
+            whatItIs: "Synthetic system application."
+        )
+        XCTAssertNoThrow(try RuleValidator().validate([valid]))
+
+        var invalid = valid
+        invalid.risk = .review
+        invalid.cleanupMethod = .moveToTrash
+        XCTAssertThrowsError(try RuleValidator().validate([invalid])) { error in
+            XCTAssertEqual(error as? RuleValidationError, .unsafeRiskCombination(invalid.id))
+        }
+    }
+
+    func testNestedApplicationCannotBecomeAnIndependentRuntimeRoot() throws {
+        let nested = "/Applications/Outer.app/Contents/PlugIns/Inner.app"
+        let rule = CleanupRule(
+            id: "application.nested.synthetic",
+            displayName: "Nested Synthetic App",
+            producedBy: "Synthetic",
+            producedByIdentifier: "com.example.inner",
+            sourceType: .application,
+            category: .applicationBundle,
+            approvedRoots: [nested],
+            risk: .review,
+            regeneratable: false,
+            cleanupMethod: .moveToTrash,
+            reason: "Synthetic test rule.",
+            impact: "Nested content must stay with its outer application.",
+            evidence: "Synthetic nested application path.",
+            whatItIs: "Synthetic nested application."
+        )
+
+        XCTAssertThrowsError(try RuleValidator().validate([rule])) { error in
+            XCTAssertEqual(error as? RuleValidationError, .invalidApprovedRoot(rule: rule.id, root: nested))
+        }
+    }
+
     func testBundledRulesLoadAndIdentifiersAreUnique() throws {
         let rules = try RuleLoader().loadBundled()
         XCTAssertGreaterThanOrEqual(rules.count, 16)

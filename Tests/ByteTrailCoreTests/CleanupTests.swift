@@ -3,6 +3,33 @@ import XCTest
 @testable import ByteTrailCore
 
 final class CleanupTests: XCTestCase {
+    func testOverlappingParentAndChildAreNotProcessedTwice() async throws {
+        let fixture = try TemporaryFixture()
+        let approved = try fixture.directory("approved")
+        let parent = try fixture.directory("approved/parent")
+        let child = try fixture.file("approved/parent/cache.bin", bytes: 128)
+        let rule = fixtureRule(root: approved)
+        let parentItem = try await fixtureItem(url: parent, root: approved, rule: rule)
+        let childItem = try await fixtureItem(url: child, root: approved, rule: rule)
+        let coordinator = CleanupCoordinator(
+            ruleEngine: try RuleEngine(rules: [rule]),
+            validator: FileSystemValidator(homeDirectory: fixture.root),
+            historyStore: CleanupHistoryStore(storageURL: fixture.root.appendingPathComponent("state/history.json")),
+            recoveryStore: RecoveryStore(storageURL: fixture.root.appendingPathComponent("state/recovery.json")),
+            vaultOperation: RecoveryVaultOperation(vaultRoot: fixture.root.appendingPathComponent("vault"))
+        )
+
+        let results = await coordinator.clean(items: [childItem, parentItem], dryRun: true)
+
+        XCTAssertEqual(results.count, 2)
+        XCTAssertEqual(results.first?.itemID, parentItem.id)
+        XCTAssertEqual(results.first?.status, .dryRun)
+        XCTAssertEqual(results.last?.itemID, childItem.id)
+        XCTAssertEqual(results.last?.status, .skipped)
+        XCTAssertEqual(results.last?.message, "Overlapping cleanup target skipped.")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: child.path))
+    }
+
     func testEmbeddedDynamicRuleCleanupStaysInsideTemporaryFixture() async throws {
         let fixture = try TemporaryFixture()
         let root = try fixture.directory("authorized")

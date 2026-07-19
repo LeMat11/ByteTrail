@@ -17,6 +17,7 @@ private enum FindingsGrouping: String, CaseIterable, Identifiable {
 struct FindingsView: View {
     let titleKey: String
     let categories: Set<ScanCategory>?
+    let scannerIDs: Set<String>?
     @EnvironmentObject private var model: AppViewModel
     @State private var search = ""
     @State private var sort: FindingsSort = .size
@@ -25,13 +26,23 @@ struct FindingsView: View {
     @State private var showingResults = false
     @State private var showingEvidence = false
 
-    init(titleKey: String, categories: Set<ScanCategory>? = nil) {
+    init(
+        titleKey: String,
+        categories: Set<ScanCategory>? = nil,
+        scannerIDs: Set<String>? = nil,
+        groupBySource: Bool = false
+    ) {
         self.titleKey = titleKey
         self.categories = categories
+        self.scannerIDs = scannerIDs
+        _grouping = State(initialValue: groupBySource ? .source : .risk)
     }
 
     private var filtered: [CleanableItem] {
-        var result = model.items.filter { categories == nil || categories!.contains($0.category) }
+        var result = model.items.filter { item in
+            (categories?.contains(item.category) ?? true)
+                && (scannerIDs?.contains(item.scannerIdentifier) ?? true)
+        }
         if !search.isEmpty {
             result = result.filter {
                 $0.displayName.localizedCaseInsensitiveContains(search)
@@ -59,6 +70,11 @@ struct FindingsView: View {
             if grouping == .risk {
                 let order = [RiskLevel.safe.rawValue: 0, RiskLevel.review.rawValue: 1, RiskLevel.protected.rawValue: 2]
                 return order[lhs.0, default: 9] < order[rhs.0, default: 9]
+            }
+            if grouping == .source && sort == .size {
+                let lhsSize = lhs.1.reduce(Int64(0)) { $0 + $1.allocatedSize }
+                let rhsSize = rhs.1.reduce(Int64(0)) { $0 + $1.allocatedSize }
+                if lhsSize != rhsSize { return lhsSize > rhsSize }
             }
             return groupTitle(lhs.0).localizedCaseInsensitiveCompare(groupTitle(rhs.0)) == .orderedAscending
         }
@@ -188,8 +204,8 @@ struct FindingsView: View {
             .labelsHidden()
             .toggleStyle(.checkbox)
             .disabled(!model.canSelect(item))
-            Image(systemName: item.category == .developerCache ? "terminal" : "folder")
-                .foregroundStyle(.secondary).frame(width: 20)
+            FindingIcon(item: item, size: 22)
+                .frame(width: 24, height: 24)
             VStack(alignment: .leading, spacing: 3) {
                 Text(verbatim: item.displayName).lineLimit(1)
                 Text(verbatim: "\(model.sourceName(item)) · \(item.standardizedPath)")
@@ -265,6 +281,91 @@ struct FindingsView: View {
             if key == "User file" { return model.t("source.userFile") }
             return key
         }
+    }
+}
+
+struct ApplicationsView: View {
+    @EnvironmentObject private var model: AppViewModel
+
+    private var applicationItems: [CleanableItem] {
+        model.items.filter { $0.scannerIdentifier == "scanner.applications" && $0.category == .applicationBundle }
+    }
+
+    private var exactCacheItems: [CleanableItem] {
+        model.items.filter { $0.scannerIdentifier == "scanner.applications" && $0.category == .userCache }
+    }
+
+    private var leftoverItems: [CleanableItem] {
+        model.items.filter { $0.scannerIdentifier == "scanner.application-leftovers" }
+    }
+
+    private var installerItems: [CleanableItem] {
+        model.items.filter { $0.scannerIdentifier == "scanner.installers" }
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 12) {
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .top, spacing: 16) {
+                        scopeDescription
+                        Spacer(minLength: 24)
+                        privacyLabel
+                    }
+                    VStack(alignment: .leading, spacing: 10) {
+                        scopeDescription
+                        privacyLabel
+                    }
+                }
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 10)], spacing: 10) {
+                    compactMetric("applications.installed", items: applicationItems, symbol: "app")
+                    compactMetric("applications.exactCaches", items: exactCacheItems, symbol: "bolt.horizontal.circle")
+                    compactMetric("applications.leftovers", items: leftoverItems, symbol: "folder.badge.questionmark")
+                    compactMetric("applications.installers", items: installerItems, symbol: "shippingbox")
+                }
+            }
+            .padding(14)
+            .background(.blue.opacity(0.06))
+            Divider()
+            FindingsView(
+                titleKey: "section.applications",
+                scannerIDs: ["scanner.applications", "scanner.application-leftovers", "scanner.installers"],
+                groupBySource: true
+            )
+        }
+        .navigationTitle(model.t("section.applications"))
+    }
+
+    private var scopeDescription: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(model.t("applications.scopeTitle")).font(.headline)
+            Text(model.t("applications.scopeHelp"))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var privacyLabel: some View {
+        Label(model.t("applications.localOnly"), systemImage: "hand.raised.fill")
+            .font(.caption.weight(.medium))
+            .foregroundStyle(.blue)
+    }
+
+    private func compactMetric(_ key: String, items: [CleanableItem], symbol: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: symbol).foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(model.t(key)).font(.caption).foregroundStyle(.secondary)
+                Text(model.formatBytes(items.reduce(0) { $0 + $1.allocatedSize }))
+                    .font(.headline).monospacedDigit()
+            }
+            Spacer(minLength: 4)
+            Text(items.count.formatted(.number.locale(model.language.locale)))
+                .font(.caption).foregroundStyle(.secondary)
+        }
+        .padding(10)
+        .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 10))
     }
 }
 

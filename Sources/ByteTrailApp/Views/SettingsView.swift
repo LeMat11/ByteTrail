@@ -6,6 +6,8 @@ struct SettingsView: View {
     @EnvironmentObject private var model: AppViewModel
 
     private let scanners: [(String, String, String)] = [
+        ("scanner.applications", "settings.scanner.applications", "settings.scanner.applications.help"),
+        ("scanner.application-leftovers", "settings.scanner.leftovers", "settings.scanner.leftovers.help"),
         ("scanner.xcode", "settings.scanner.xcode", "settings.scanner.xcode.help"),
         ("scanner.developer-tools", "settings.scanner.developer", "settings.scanner.developer.help"),
         ("scanner.user-cache", "settings.scanner.cache", "settings.scanner.cache.help"),
