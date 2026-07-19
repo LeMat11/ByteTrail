@@ -1,0 +1,15 @@
+# SwiftPM and local build products
+.build/
+.swiftpm/
+DerivedData/
+
+# Xcode per-user state
+xcuserdata/
+*.xcuserstate
+
+# macOS metadata
+.DS_Store
+
+# Reproducible binary deliverables (keep the accompanying docs and checksum)
+outputs/*.app/
+outputs/*.dmg
